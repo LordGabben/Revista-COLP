@@ -1,0 +1,7 @@
+{
+  "name": "Scientia Dentis - Colegio de Odontólogos de La Paz",
+  "description": "Scientia Dentis 'Revista Científica' - Órgano Oficial del Colegio de Odontólogos de La Paz (COLP). Plataforma OJS de gestión editorial y publicación científica.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
