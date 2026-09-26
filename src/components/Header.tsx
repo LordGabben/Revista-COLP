@@ -1,148 +1,347 @@
-import React from 'react';
-import { BookOpen, User as UserIcon, Shield, PenTool, ClipboardCheck, GraduationCap, RefreshCw } from 'lucide-react';
-import { UserRole, JournalConfig } from '../types';
+import React, { useState } from 'react';
+import { 
+  BookOpen, 
+  User as UserIcon, 
+  Shield, 
+  PenTool, 
+  ClipboardCheck, 
+  GraduationCap, 
+  Search, 
+  FileText, 
+  Users, 
+  Menu, 
+  X,
+  ExternalLink,
+  ChevronDown
+} from 'lucide-react';
+import { UserRole, JournalConfig, InstitutionalModalType } from '../types';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 
 interface HeaderProps {
   currentRole: UserRole;
   onChangeRole: (role: UserRole) => void;
   journalInfo: JournalConfig;
+  onOpenModal: (modal: InstitutionalModalType) => void;
+  onNavigateHome: () => void;
+  onNavigateCurrentIssue: () => void;
+  onNavigateArchive: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
-export default function Header({ currentRole, onChangeRole, journalInfo }: HeaderProps) {
-  // Define mock users for each role
-  const mockUsers: Record<UserRole, { name: string; title: string; institution: string; icon: any; color: string }> = {
+export default function Header({ 
+  currentRole, 
+  onChangeRole, 
+  journalInfo,
+  onOpenModal,
+  onNavigateHome,
+  onNavigateCurrentIssue,
+  onNavigateArchive,
+  searchQuery = '',
+  onSearchChange
+}: HeaderProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+  // Role descriptions and metadata
+  const roleDetails: Record<UserRole, { label: string; roleTitle: string; icon: any; badgeColor: string }> = {
     reader: {
-      name: "Invitado Académico",
-      title: "Lector / Investigador",
-      institution: "Público General",
+      label: "Lector / Público",
+      roleTitle: "Comunidad Científica General",
       icon: GraduationCap,
-      color: "bg-slate-100 text-slate-800 border-slate-200"
+      badgeColor: "bg-slate-100 text-slate-800 border-slate-300"
     },
     author: {
-      name: "Dr. Gonzalo Martínez-Rojas",
-      title: "Autor Principal",
-      institution: "Colegio de Odontólogos de La Paz",
+      label: "Autor Investigador",
+      roleTitle: "Dr. Gonzalo Martínez-Rojas (Autor)",
       icon: PenTool,
-      color: "bg-teal-50 text-teal-800 border-teal-200"
+      badgeColor: "bg-teal-50 text-teal-800 border-teal-300"
     },
     reviewer: {
-      name: "Dra. Sofía Mendoza, PhD",
-      title: "Revisora Científica (Par)",
-      institution: "Comité de Bioética & Arbitraje COLP",
+      label: "Revisor por Pares",
+      roleTitle: "Dra. Sofía Mendoza, PhD (Árbitro)",
       icon: ClipboardCheck,
-      color: "bg-indigo-50 text-indigo-800 border-indigo-200"
+      badgeColor: "bg-indigo-50 text-indigo-800 border-indigo-300"
     },
     editor: {
-      name: "Dra. Beatriz Villalobos, PhD",
-      title: "Editora Jefa (Scientia Dentis)",
-      institution: "Colegio de Odontólogos de La Paz (COLP)",
+      label: "Editor en Jefe",
+      roleTitle: "Dra. Beatriz Villalobos, PhD (Editora)",
       icon: Shield,
-      color: "bg-amber-50 text-amber-800 border-amber-200"
+      badgeColor: "bg-amber-50 text-amber-900 border-amber-300"
     }
   };
 
-  const activeUser = mockUsers[currentRole];
+  const currentRoleInfo = roleDetails[currentRole];
+  const CurrentRoleIcon = currentRoleInfo.icon;
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs" id="app-header">
-      {/* Simulation/Role Selector Banner */}
-      <div className="bg-slate-950 text-white py-2 px-4 text-xs border-b border-slate-800">
+      
+      {/* Simulation & Institutional Utility Strip */}
+      <div className="bg-slate-950 text-white py-2 px-4 sm:px-8 text-xs border-b border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          
+          {/* Institutional Trust markers */}
+          <div className="flex items-center gap-3">
+            <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
             <span className="font-medium text-slate-300">
-              Entorno OJS Simulado: <strong className="text-white font-serif">Scientia Dentis</strong> • Órgano Oficial del COLP
+              Órgano Oficial del Colegio de Odontólogos de La Paz (COLP)
+            </span>
+            <span className="text-slate-600 hidden sm:inline" aria-hidden="true">·</span>
+            <span className="font-mono text-cyan-400 hidden sm:inline font-semibold">
+              {journalInfo.issn}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full">
-            <span className="text-slate-400 mr-1.5 font-medium">Cambiar de Panel:</span>
-            {(['reader', 'author', 'reviewer', 'editor'] as UserRole[]).map((role) => {
-              const info = mockUsers[role];
-              const isSelected = currentRole === role;
-              const IconComp = info.icon;
-              return (
-                <button
-                  key={role}
-                  id={`btn-role-${role}`}
-                  onClick={() => onChangeRole(role)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded transition-all cursor-pointer font-medium whitespace-nowrap ${
-                    isSelected
-                      ? 'bg-brand-600 text-white shadow-xs scale-105'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
-                  }`}
-                >
-                  <IconComp className="w-3.5 h-3.5" />
-                  <span className="capitalize text-[11px]">{role === 'reader' ? 'Público' : role === 'author' ? 'Autor' : role === 'reviewer' ? 'Revisor' : 'Editor'}</span>
-                </button>
-              );
-            })}
+
+          {/* Quick Institutional Policy Links + Role Selector */}
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex items-center gap-3 text-[11px] text-slate-400">
+              <button 
+                onClick={() => onOpenModal('guidelines')} 
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                Guía Autores (Vancouver)
+              </button>
+              <span className="text-slate-700" aria-hidden="true">/</span>
+              <button 
+                onClick={() => onOpenModal('about')} 
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                Comité Editorial
+              </button>
+              <span className="text-slate-700" aria-hidden="true">/</span>
+              <button 
+                onClick={() => onOpenModal('terms')} 
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                Acceso Abierto (CC BY 4.0)
+              </button>
+            </div>
+
+            {/* Role Switcher Pills */}
+            <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+              <span className="text-[10px] uppercase font-mono text-slate-400 px-2 hidden sm:inline">
+                Panel:
+              </span>
+              {(['reader', 'author', 'reviewer', 'editor'] as UserRole[]).map((role) => {
+                const isSelected = currentRole === role;
+                const info = roleDetails[role];
+                const Icon = info.icon;
+                return (
+                  <button
+                    key={role}
+                    id={`nav-role-${role}`}
+                    onClick={() => onChangeRole(role)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    <span>{role === 'reader' ? 'Lector' : role === 'author' ? 'Autor' : role === 'reviewer' ? 'Revisor' : 'Editor'}</span>
+                  </button>
+                );
+              })}
+            </div>
+
           </div>
         </div>
       </div>
 
-      {/* Main Brand Header */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-4">
-            {/* Official Circular Seal Logo */}
-            <div className="relative group shrink-0">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-brand-800 shadow-md bg-[#e9e5db] flex items-center justify-center transition-transform group-hover:scale-105">
-                <img 
-                  src={logoImg} 
-                  alt="Scientia Dentis - Órgano Oficial del Colegio de Odontólogos de La Paz" 
-                  className="w-full h-full object-contain mix-blend-multiply"
-                  referrerPolicy="no-referrer"
+      {/* Main Navigation Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+        <div className="flex items-center justify-between gap-4">
+          
+          {/* Brand Wordmark & Seal */}
+          <div 
+            onClick={onNavigateHome}
+            className="flex items-center gap-3 sm:gap-4 cursor-pointer group shrink-0"
+            id="brand-logo-button"
+          >
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-slate-800 bg-[#e9e5db] shadow-md flex items-center justify-center transition-transform group-hover:scale-105 shrink-0">
+              <img 
+                src={logoImg} 
+                alt="Scientia Dentis Logo" 
+                className="w-full h-full object-contain mix-blend-multiply"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            
+            <div className="leading-tight">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-serif text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                  Scientia Dentis
+                </span>
+                <span className="font-serif italic text-sm sm:text-base font-semibold text-blue-700">
+                  "Revista Científica"
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Órgano Oficial del Colegio de Odontólogos de La Paz
+              </p>
+            </div>
+          </div>
+
+          {/* Center Navigation Links */}
+          <nav className="hidden xl:flex items-center gap-6 text-sm font-medium text-slate-700">
+            <button
+              onClick={onNavigateHome}
+              className={`hover:text-blue-600 transition-colors cursor-pointer ${currentRole === 'reader' ? 'text-blue-700 font-semibold' : ''}`}
+            >
+              Inicio / Portada
+            </button>
+            <button
+              onClick={onNavigateCurrentIssue}
+              className="hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              Edición Actual
+            </button>
+            <button
+              onClick={onNavigateArchive}
+              className="hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              Catálogo & Archivo
+            </button>
+            <button
+              onClick={() => onChangeRole('author')}
+              className={`hover:text-blue-600 transition-colors cursor-pointer ${currentRole === 'author' ? 'text-blue-700 font-semibold' : ''}`}
+            >
+              Enviar Artículo
+            </button>
+            <button
+              onClick={() => onOpenModal('guidelines')}
+              className="hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              Guía de Autores
+            </button>
+            <button
+              onClick={() => onOpenModal('about')}
+              className="hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              Comité Editorial
+            </button>
+          </nav>
+
+          {/* Right Action: Active User / Quick Role Badge + Mobile Toggle */}
+          <div className="flex items-center gap-3 shrink-0">
+            
+            {/* Quick Search Input */}
+            {onSearchChange && (
+              <div className="relative hidden md:block w-44 lg:w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  placeholder="Buscar artículos..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 focus:bg-white text-slate-800 transition-colors"
                 />
               </div>
-            </div>
+            )}
 
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-brand-50 border border-brand-200 text-brand-800 text-[10px] font-semibold tracking-wider font-mono">
-                  {journalInfo.issn}
+            {/* Current Active Persona Badge */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs shadow-2xs ${currentRoleInfo.badgeColor}`}>
+              <CurrentRoleIcon className="w-4 h-4 shrink-0 text-current" />
+              <div className="hidden sm:block text-left">
+                <span className="block text-[10px] uppercase font-mono font-bold tracking-wider opacity-75">
+                  {currentRoleInfo.label}
                 </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  {journalInfo.institution}
+                <span className="block font-semibold truncate max-w-[130px]">
+                  {currentRole === 'reader' ? 'Acceso Público' : currentRole === 'author' ? 'Dr. G. Martínez' : currentRole === 'reviewer' ? 'Dra. S. Mendoza' : 'Dra. B. Villalobos'}
                 </span>
               </div>
-
-              <div className="mt-0.5">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-                    Scientia Dentis
-                  </h1>
-                  <span className="font-serif italic text-sm sm:text-base font-semibold text-brand-700">
-                    "Revista Científica"
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 tracking-normal">
-                  Órgano Oficial del Colegio de Odontólogos de La Paz
-                </p>
-              </div>
             </div>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="xl:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Abrir menú"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
           </div>
 
-          {/* User Profile Card */}
-          <div className={`flex items-center gap-3 px-4 py-2 border rounded-xl shadow-xs shrink-0 transition-all ${activeUser.color}`} id="active-user-profile">
-            <div className="p-1.5 bg-white/80 rounded-lg">
-              <activeUser.icon className="w-5 h-5 text-current" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 font-mono">
-                {activeUser.title}
-              </p>
-              <h4 className="font-semibold text-slate-900 text-xs">
-                {activeUser.name}
-              </h4>
-              <p className="text-[10px] text-slate-600">
-                {activeUser.institution}
-              </p>
-            </div>
-          </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="xl:hidden mt-4 pt-4 border-t border-slate-200 space-y-3 fade-in pb-2">
+            {onSearchChange && (
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Buscar artículos por título, autor..."
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-xs focus:outline-none text-slate-800"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-medium">
+              <button
+                onClick={() => {
+                  onNavigateHome();
+                  setMobileMenuOpen(false);
+                }}
+                className="p-2.5 rounded-lg text-left bg-slate-50 hover:bg-slate-100 text-slate-800 cursor-pointer"
+              >
+                Inicio / Portada
+              </button>
+              <button
+                onClick={() => {
+                  onNavigateCurrentIssue();
+                  setMobileMenuOpen(false);
+                }}
+                className="p-2.5 rounded-lg text-left bg-slate-50 hover:bg-slate-100 text-slate-800 cursor-pointer"
+              >
+                Edición Actual
+              </button>
+              <button
+                onClick={() => {
+                  onNavigateArchive();
+                  setMobileMenuOpen(false);
+                }}
+                className="p-2.5 rounded-lg text-left bg-slate-50 hover:bg-slate-100 text-slate-800 cursor-pointer"
+              >
+                Catálogo & Archivo
+              </button>
+              <button
+                onClick={() => {
+                  onChangeRole('author');
+                  setMobileMenuOpen(false);
+                }}
+                className="p-2.5 rounded-lg text-left bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold cursor-pointer"
+              >
+                Enviar Artículo
+              </button>
+              <button
+                onClick={() => {
+                  onOpenModal('guidelines');
+                  setMobileMenuOpen(false);
+                }}
+                className="p-2.5 rounded-lg text-left bg-slate-50 hover:bg-slate-100 text-slate-800 cursor-pointer"
+              >
+                Guía de Autores
+              </button>
+              <button
+                onClick={() => {
+                  onOpenModal('about');
+                  setMobileMenuOpen(false);
+                }}
+                className="p-2.5 rounded-lg text-left bg-slate-50 hover:bg-slate-100 text-slate-800 cursor-pointer"
+              >
+                Comité Editorial
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </header>
   );
 }
-

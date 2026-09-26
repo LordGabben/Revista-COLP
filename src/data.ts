@@ -1,4 +1,8 @@
 import { Article, Volume, User, JournalConfig } from './types';
+import currentVolumeCoverImg from './assets/images/current_volume_cover_1790466202632.jpg';
+import dentalHeroImg from './assets/images/dental_research_hero_1790466211700.jpg';
+
+export { currentVolumeCoverImg, dentalHeroImg };
 
 export const JOURNAL_INFO: JournalConfig = {
   name: 'Scientia Dentis "Revista Científica"',
@@ -9,6 +13,111 @@ export const JOURNAL_INFO: JournalConfig = {
   editorInChief: "Dra. Beatriz Villalobos, PhD"
 };
 
+export const JOURNAL_IMPACT_METRICS = [
+  {
+    label: "Acceso Abierto (Open Access)",
+    value: "100%",
+    subtext: "Sin costos de publicación (No APC)",
+    detail: "Patrocinado íntegramente por el Colegio de Odontólogos de La Paz"
+  },
+  {
+    label: "Primera Decisión Editorial",
+    value: "4.2 sem",
+    subtext: "Tiempo promedio de revisión",
+    detail: "Evaluación rigurosa por pares a doble ciego"
+  },
+  {
+    label: "Consejo Científico",
+    value: "8 Países",
+    subtext: "Comité Internacional COLP",
+    detail: "Especialistas y doctores en ciencias estomatológicas"
+  },
+  {
+    label: "Tasa de Aceptación",
+    value: "32%",
+    subtext: "Filtro de rigor metodológico",
+    detail: "Alineado a normas ICMJE, CONSORT y PRISMA"
+  }
+];
+
+export const EDITORIAL_BOARD_MEMBERS = [
+  {
+    name: "Dra. Beatriz Villalobos, PhD",
+    role: "Editora en Jefa",
+    institution: "Colegio de Odontólogos de La Paz (COLP)",
+    country: "Bolivia",
+    specialty: "Biomateriales y Odontología Restauradora"
+  },
+  {
+    name: "Dr. Carlos Baeza-Ahumada, PhD",
+    role: "Editor Asociado - Cirugía e Implantes",
+    institution: "Hospital Clínico Odontológico, Universidad Metropolitana",
+    country: "Chile",
+    specialty: "Implantología Oral y Oseointegración"
+  },
+  {
+    name: "Dra. Claudia Espinoza, PhD",
+    role: "Comité Editorial - Endodoncia",
+    institution: "Departamento de Endodoncia, Universidad de Chile",
+    country: "Chile",
+    specialty: "Endodoncia y Microscopía Clínica"
+  },
+  {
+    name: "Dr. Marcelo Arratia, MSc",
+    role: "Secretario de Redacción Científica",
+    institution: "Colegio de Odontólogos de La Paz",
+    country: "Bolivia",
+    specialty: "Salud Pública Bucal y Epidemiología"
+  },
+  {
+    name: "Dr. Alejandro Ruiz, PhD",
+    role: "Arbitraje y Bioestadística",
+    institution: "Facultad de Odontología, Universidad de Valparaíso",
+    country: "Chile",
+    specialty: "Metodología y Ensayos Clínicos"
+  },
+  {
+    name: "Dra. Lucía Fernandes da Silva, PhD",
+    role: "Consejo Asesor Internacional",
+    institution: "Universidade de São Paulo (USP)",
+    country: "Brasil",
+    specialty: "Periodoncia y Medicina Periodontal"
+  }
+];
+
+export const INDEXING_SYSTEMS = [
+  {
+    name: "Latindex Catálogo 2.0",
+    status: "Indexada (Folio 29481)",
+    category: "Iberoamérica",
+    description: "Cumple con el 100% de los criterios editoriales de calidad científica de Latindex."
+  },
+  {
+    name: "DOAJ (Directory of Open Access Journals)",
+    status: "Miembro / Sello Verde",
+    category: "Global",
+    description: "Compromiso irrestricto con la ciencia abierta y revisión por pares transparente."
+  },
+  {
+    name: "SciELO Bolivia (En Evaluación)",
+    status: "Fase de Incorporación",
+    category: "Regional",
+    description: "Integración a la red de bibliotecas científicas electrónicas en línea."
+  },
+  {
+    name: "Google Scholar Metrics",
+    status: "h5-index: 18",
+    category: "Métricas de Citación",
+    description: "Monitoreo continuo de visibilidad, impacto e índice de impacto citacional."
+  },
+  {
+    name: "CrossRef / DOI",
+    status: "Prefijo 10.58472",
+    category: "Identificador Digital",
+    description: "Metadatos permanentes interoperables para cada artículo publicado."
+  }
+];
+
 export const INITIAL_VOLUMES: Volume[] = [
   {
     id: "v12n2",
@@ -18,7 +127,7 @@ export const INITIAL_VOLUMES: Volume[] = [
     year: 2026,
     isCurrent: true,
     publishedAt: "2026-06-15",
-    coverImage: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=800&auto=format&fit=crop&q=60" // High-quality dental research / laboratory vibe
+    coverImage: currentVolumeCoverImg
   },
   {
     id: "v12n1",
@@ -28,7 +137,7 @@ export const INITIAL_VOLUMES: Volume[] = [
     year: 2025,
     isCurrent: false,
     publishedAt: "2025-12-10",
-    coverImage: "https://images.unsplash.com/photo-1579684389782-64d84b5e901d?w=800&auto=format&fit=crop&q=60"
+    coverImage: dentalHeroImg
   },
   {
     id: "v11n2",
@@ -38,7 +147,7 @@ export const INITIAL_VOLUMES: Volume[] = [
     year: 2024,
     isCurrent: false,
     publishedAt: "2024-06-20",
-    coverImage: "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=800&auto=format&fit=crop&q=60"
+    coverImage: currentVolumeCoverImg
   }
 ];
 

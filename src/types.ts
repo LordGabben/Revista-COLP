@@ -119,3 +119,5 @@ export interface JournalConfig {
   institution: string;
   editorInChief: string;
 }
+
+export type InstitutionalModalType = 'privacy' | 'terms' | 'guidelines' | 'about' | null;

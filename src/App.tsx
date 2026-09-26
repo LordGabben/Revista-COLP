@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
+import CoverHero from './components/CoverHero';
 import ReaderView from './components/ReaderView';
 import AuthorDashboard from './components/AuthorDashboard';
 import ReviewerDashboard from './components/ReviewerDashboard';
 import EditorDashboard from './components/EditorDashboard';
+import Footer from './components/Footer';
+import InstitutionalModals from './components/InstitutionalModals';
 
 import { INITIAL_ARTICLES, INITIAL_VOLUMES, JOURNAL_INFO } from './data';
-import { Article, Review, UserRole, Volume } from './types';
-import { ShieldAlert, BookOpen, GraduationCap, Award } from 'lucide-react';
+import { Article, Review, UserRole, Volume, InstitutionalModalType } from './types';
 
 export default function App() {
   const [currentRole, setCurrentRole] = useState<UserRole>('reader');
   const [articles, setArticles] = useState<Article[]>([]);
   const [volumes, setVolumes] = useState<Volume[]>([]);
+  const [activeModal, setActiveModal] = useState<InstitutionalModalType>(null);
+  const [selectedArticleForReader, setSelectedArticleForReader] = useState<Article | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // 1. Load initial state from LocalStorage or Data defaults
   useEffect(() => {
@@ -66,9 +71,6 @@ export default function App() {
     const updated = articles.map(art => {
       if (art.id === articleId) {
         const updatedReviews = [...art.reviews, review];
-        
-        // If article now has 2 or more reviews, we can keep the under_review status
-        // or notify the editor. Let's append the review and update notes
         return {
           ...art,
           reviews: updatedReviews,
@@ -96,126 +98,153 @@ export default function App() {
     saveState(updated);
   };
 
-  // Reset demo states to help testers
+  // Smooth scroll helper
+  const scrollToCatalog = () => {
+    if (currentRole !== 'reader') {
+      setCurrentRole('reader');
+    }
+    setTimeout(() => {
+      const catalogEl = document.getElementById('catalog-section');
+      if (catalogEl) {
+        catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 80);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Navigation handlers
+  const handleNavigateHome = () => {
+    if (currentRole !== 'reader') {
+      setCurrentRole('reader');
+    }
+    scrollToTop();
+  };
+
+  const handleNavigateCurrentIssue = () => {
+    scrollToCatalog();
+  };
+
+  const handleNavigateArchive = () => {
+    scrollToCatalog();
+  };
+
+  const handleSelectFeaturedArticle = (article: Article) => {
+    if (currentRole !== 'reader') {
+      setCurrentRole('reader');
+    }
+    setSelectedArticleForReader(article);
+  };
+
+  // Reset demo states
   const handleResetDemo = () => {
-    if (confirm('¿Desea restaurar el entorno simulado? Se borrarán todos los nuevos envíos y evaluaciones que haya registrado para volver a los valores originales.')) {
+    if (confirm('¿Desea restaurar el entorno simulado? Se borrarán todos los nuevos envíos y evaluaciones que haya registrado para volver a los valores iniciales de fábrica.')) {
       localStorage.removeItem('oj_articles');
       localStorage.removeItem('oj_volumes');
       setArticles(INITIAL_ARTICLES);
       setVolumes(INITIAL_VOLUMES);
       setCurrentRole('reader');
-      alert('Entorno restaurado con éxito.');
+      setSelectedArticleForReader(null);
+      setSearchQuery('');
+      alert('Entorno de prueba restaurado con éxito.');
     }
   };
 
+  // Published articles and active volume
+  const publishedArticles = articles.filter(a => a.status === 'published');
+  const currentVolume = volumes.find(v => v.isCurrent) || volumes[0] || INITIAL_VOLUMES[0];
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between" id="app-root-container">
-      {/* Upper Navigation and role selectors */}
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-cyan-500/20" id="app-root-container">
+      
+      {/* Refactored Institutional Header */}
       <Header 
         currentRole={currentRole} 
         onChangeRole={setCurrentRole} 
-        journalInfo={JOURNAL_INFO} 
+        journalInfo={JOURNAL_INFO}
+        onOpenModal={setActiveModal}
+        onNavigateHome={handleNavigateHome}
+        onNavigateCurrentIssue={handleNavigateCurrentIssue}
+        onNavigateArchive={handleNavigateArchive}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
-      {/* Main Content Workspace wrapper */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+      {/* Main Content Workspace */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full">
         {currentRole === 'reader' && (
-          <ReaderView 
-            articles={articles} 
-            volumes={volumes} 
-          />
+          <>
+            {/* Landing Hero "Telón Editorial" */}
+            <CoverHero 
+              currentVolume={currentVolume}
+              featuredArticles={publishedArticles.slice(0, 4)}
+              onExploreCatalog={scrollToCatalog}
+              onSelectArticle={handleSelectFeaturedArticle}
+              onOpenModal={setActiveModal}
+              onChangeRole={setCurrentRole}
+            />
+
+            {/* Reader View & Catalog */}
+            <ReaderView 
+              articles={articles} 
+              volumes={volumes}
+              externalSelectedArticle={selectedArticleForReader}
+              onCloseExternalArticle={() => setSelectedArticleForReader(null)}
+              externalSearchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onOpenInstitutionalModal={setActiveModal}
+              onNavigateToAuthor={() => setCurrentRole('author')}
+            />
+          </>
         )}
 
         {currentRole === 'author' && (
-          <AuthorDashboard 
-            articles={articles} 
-            onAddArticle={handleAddArticle} 
-            onUpdateArticle={handleUpdateArticle}
-          />
+          <div className="fade-in">
+            <AuthorDashboard 
+              articles={articles} 
+              onAddArticle={handleAddArticle} 
+              onUpdateArticle={handleUpdateArticle}
+            />
+          </div>
         )}
 
         {currentRole === 'reviewer' && (
-          <ReviewerDashboard 
-            articles={articles} 
-            onAddReview={handleAddReview} 
-          />
+          <div className="fade-in">
+            <ReviewerDashboard 
+              articles={articles} 
+              onAddReview={handleAddReview} 
+            />
+          </div>
         )}
 
         {currentRole === 'editor' && (
-          <EditorDashboard 
-            articles={articles} 
-            volumes={volumes} 
-            onUpdateArticle={handleUpdateArticle} 
-            onPublishArticle={handlePublishArticle} 
-          />
+          <div className="fade-in">
+            <EditorDashboard 
+              articles={articles} 
+              volumes={volumes} 
+              onUpdateArticle={handleUpdateArticle} 
+              onPublishArticle={handlePublishArticle} 
+            />
+          </div>
         )}
       </main>
 
-      {/* Premium Academic Footer */}
-      <footer className="bg-slate-900 text-white mt-12 border-t-4 border-brand-700 shrink-0" id="app-footer">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-xs text-slate-400">
-            {/* Branding / Institution */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-brand-500" />
-                <span className="font-serif font-bold text-sm text-white tracking-wide">{JOURNAL_INFO.shortName} • OJS</span>
-              </div>
-              <p className="leading-relaxed">
-                <strong>Scientia Dentis "Revista Científica"</strong> es el Órgano Oficial del Colegio de Odontólogos de La Paz (COLP). Sistema Open Journal Systems (OJS) para garantizar flujos de investigación estomatológica rigurosa, transparente y de acceso abierto.
-              </p>
-              <button
-                onClick={handleResetDemo}
-                className="text-[10px] text-teal-400 font-bold font-mono hover:underline cursor-pointer flex items-center gap-1 mt-2 bg-slate-800 px-2.5 py-1 rounded border border-slate-700"
-              >
-                Resetear Entorno de Prueba OJS
-              </button>
-            </div>
+      {/* Institutional Legal & Informational Modals */}
+      <InstitutionalModals 
+        activeModal={activeModal}
+        onClose={() => setActiveModal(null)}
+        onSelectModal={setActiveModal}
+      />
 
-            {/* Scientific Policies */}
-            <div className="space-y-2.5">
-              <h4 className="text-white font-bold text-xs uppercase tracking-wider font-mono">Políticas Editoriales</h4>
-              <ul className="space-y-1.5 pl-0">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-brand-500 rounded-full shrink-0"></span>
-                  <span>Evaluación por pares doble ciego independiente</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-brand-500 rounded-full shrink-0"></span>
-                  <span>Protección anti-plagio (Crossref Similarity Check)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-brand-500 rounded-full shrink-0"></span>
-                  <span>Políticas de autoarchivo CC BY-NC-ND 4.0</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-brand-500 rounded-full shrink-0"></span>
-                  <span>Preservación digital permanente (LOCKSS/CLOCKSS)</span>
-                </li>
-              </ul>
-            </div>
+      {/* Refactored Institutional Footer */}
+      <Footer 
+        journalInfo={JOURNAL_INFO}
+        onOpenModal={setActiveModal}
+        onResetDemo={handleResetDemo}
+      />
 
-            {/* License & Contact */}
-            <div className="space-y-3 text-slate-400">
-              <h4 className="text-white font-bold text-xs uppercase tracking-wider font-mono">Soporte y Contacto</h4>
-              <p className="leading-relaxed">
-                Colegio de Odontólogos de La Paz (COLP)<br />
-                Comité Editorial: <span className="text-slate-200">scientia.dentis@colp.org.bo</span><br />
-                ISSN Electrónico: <span className="text-slate-200 font-mono">2448-8976</span>
-              </p>
-              <div className="flex gap-3 pt-1">
-                <span className="px-2 py-1 bg-slate-800 text-slate-300 rounded border border-slate-700 uppercase text-[9px] font-bold font-mono">CC BY-NC</span>
-                <span className="px-2 py-1 bg-slate-800 text-slate-300 rounded border border-slate-700 uppercase text-[9px] font-bold font-mono">Open Access</span>
-                <span className="px-2 py-1 bg-slate-800 text-slate-300 rounded border border-slate-700 uppercase text-[9px] font-bold font-mono">COLP Oficial</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-slate-800 text-center text-[10px] text-slate-500">
-            <p>&copy; {new Date().getFullYear()} Scientia Dentis "Revista Científica" - Órgano Oficial del Colegio de Odontólogos de La Paz. Todos los derechos de los artículos son cedidos bajo licencia internacional Creative Commons.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
