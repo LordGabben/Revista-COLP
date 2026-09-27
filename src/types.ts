@@ -1,4 +1,24 @@
-export type UserRole = 'reader' | 'author' | 'editor' | 'reviewer';
+export type UserRole = 'reader' | 'author' | 'editor' | 'reviewer' | 'superadmin';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  affiliation?: string;
+  specialty?: string;
+  createdAt?: string;
+}
+
+export interface EditorialMember {
+  id: string;
+  name: string;
+  role: string;
+  institution: string;
+  country: string;
+  specialty: string;
+  category?: 'editorial' | 'advisory';
+}
 
 export interface User {
   id: string;

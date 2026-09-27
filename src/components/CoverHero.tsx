@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 import dentalHeroImg from '../assets/images/dental_research_hero_1790466211700.jpg';
+import { resolveVolumeCover } from '../lib/supabase';
 
 interface CoverHeroProps {
   currentVolume: Volume;
@@ -242,8 +243,11 @@ export default function CoverHero({
                 
                 {/* Book Cover Photography */}
                 <img 
-                  src={currentVolume.coverImage} 
+                  src={resolveVolumeCover(currentVolume.id, currentVolume.coverImage)} 
                   alt={currentVolume.title} 
+                  onError={(e) => {
+                    e.currentTarget.src = resolveVolumeCover(currentVolume.id);
+                  }}
                   className="absolute inset-0 w-full h-full object-cover opacity-95 transition-transform duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                 />
@@ -450,8 +454,11 @@ export default function CoverHero({
                       >
                         {/* Cover Image */}
                         <img 
-                          src={vol.coverImage} 
+                          src={resolveVolumeCover(vol.id, vol.coverImage)} 
                           alt={vol.title} 
+                          onError={(e) => {
+                            e.currentTarget.src = resolveVolumeCover(vol.id);
+                          }}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
                         />

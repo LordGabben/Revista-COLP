@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, ShieldCheck, BookOpen, Award, Users, Scale, FileText, CheckCircle2, AlertCircle, Building2, Globe2, ExternalLink, Printer } from 'lucide-react';
-import { InstitutionalModalType } from '../types';
+import { InstitutionalModalType, EditorialMember } from '../types';
 import { JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS, INDEXING_SYSTEMS } from '../data';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 
@@ -8,10 +8,20 @@ interface InstitutionalModalsProps {
   activeModal: InstitutionalModalType;
   onClose: () => void;
   onSelectModal: (modal: InstitutionalModalType) => void;
+  editorialBoardMembers?: EditorialMember[];
 }
 
-export default function InstitutionalModals({ activeModal, onClose, onSelectModal }: InstitutionalModalsProps) {
+export default function InstitutionalModals({ 
+  activeModal, 
+  onClose, 
+  onSelectModal,
+  editorialBoardMembers
+}: InstitutionalModalsProps) {
   if (!activeModal) return null;
+
+  const currentMembers = editorialBoardMembers && editorialBoardMembers.length > 0
+    ? editorialBoardMembers
+    : EDITORIAL_BOARD_MEMBERS;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 fade-in" id="institutional-modal-backdrop">
@@ -152,8 +162,8 @@ export default function InstitutionalModals({ activeModal, onClose, onSelectModa
                   Cuerpo Editorial y Consejo Científico Asesor
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {EDITORIAL_BOARD_MEMBERS.map((member, i) => (
-                    <div key={i} className="p-4 rounded-2xl border border-white/10 bg-slate-900/60 hover:border-cyan-500/40 transition-colors">
+                  {currentMembers.map((member, i) => (
+                    <div key={(member as any).id || i} className="p-4 rounded-2xl border border-white/10 bg-slate-900/60 hover:border-cyan-500/40 transition-colors">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-[11px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
