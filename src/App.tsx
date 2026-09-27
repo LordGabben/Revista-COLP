@@ -18,6 +18,7 @@ export default function App() {
   const [activeModal, setActiveModal] = useState<InstitutionalModalType>(null);
   const [selectedArticleForReader, setSelectedArticleForReader] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedVolumeFilter, setSelectedVolumeFilter] = useState<string | null>(null);
 
   // 1. Load initial state from LocalStorage or Data defaults
   useEffect(() => {
@@ -141,14 +142,32 @@ export default function App() {
     if (currentRole !== 'reader') {
       setCurrentRole('reader');
     }
+    setSelectedVolumeFilter(null);
     scrollToTop();
   };
 
   const handleNavigateCurrentIssue = () => {
+    if (currentRole !== 'reader') {
+      setCurrentRole('reader');
+    }
+    setSelectedVolumeFilter(currentVolume.id);
     scrollToCatalog();
   };
 
   const handleNavigateArchive = () => {
+    if (currentRole !== 'reader') {
+      setCurrentRole('reader');
+    }
+    setSelectedVolumeFilter(null);
+    scrollToCatalog();
+  };
+
+  const handleSelectVolume = (volumeId: string) => {
+    if (currentRole !== 'reader') {
+      setCurrentRole('reader');
+    }
+    setSelectedVolumeFilter(volumeId);
+    setSelectedArticleForReader(null);
     scrollToCatalog();
   };
 
@@ -168,6 +187,7 @@ export default function App() {
       setVolumes(INITIAL_VOLUMES);
       setCurrentRole('reader');
       setSelectedArticleForReader(null);
+      setSelectedVolumeFilter(null);
       setSearchQuery('');
       alert('Entorno de prueba restaurado con éxito.');
     }
@@ -216,11 +236,16 @@ export default function App() {
             {/* Landing Hero "Telón Editorial" */}
             <CoverHero 
               currentVolume={currentVolume}
+              previousVolumes={volumes.filter(v => !v.isCurrent)}
               featuredArticles={publishedArticles.slice(0, 4)}
-              onExploreCatalog={scrollToCatalog}
+              onExploreCatalog={() => {
+                setSelectedVolumeFilter(null);
+                scrollToCatalog();
+              }}
               onSelectArticle={handleSelectFeaturedArticle}
               onOpenModal={setActiveModal}
               onChangeRole={setCurrentRole}
+              onSelectVolume={handleSelectVolume}
             />
 
             {/* Reader View & Catalog */}
@@ -233,6 +258,8 @@ export default function App() {
               onSearchChange={setSearchQuery}
               onOpenInstitutionalModal={setActiveModal}
               onNavigateToAuthor={() => setCurrentRole('author')}
+              externalSelectedVolumeId={selectedVolumeFilter}
+              onClearVolumeFilter={() => setSelectedVolumeFilter(null)}
             />
           </>
         )}

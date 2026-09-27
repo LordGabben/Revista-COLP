@@ -109,6 +109,9 @@ export interface Volume {
   isCurrent: boolean;
   publishedAt: string;
   coverImage?: string;
+  articleCount?: number;
+  pdfUrl?: string;
+  theme?: string;
 }
 
 export interface JournalConfig {

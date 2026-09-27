@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BookOpen, Calendar, ChevronRight, FileText, Download, Tag, Award, Users, ExternalLink, HelpCircle, FileCheck2, Sparkles, ShieldCheck, Image, Paperclip, Check, Clock, Eye } from 'lucide-react';
+import { Search, Filter, BookOpen, Calendar, ChevronRight, FileText, Download, Tag, Award, Users, ExternalLink, HelpCircle, FileCheck2, Sparkles, ShieldCheck, Image, Paperclip, Check, Clock, Eye, Archive, X } from 'lucide-react';
 import { Article, Volume, InstitutionalModalType } from '../types';
 import { DENTAL_CATEGORIES, JOURNAL_INFO, INDEXING_SYSTEMS } from '../data';
 
@@ -12,6 +12,8 @@ interface ReaderViewProps {
   onSearchChange?: (q: string) => void;
   onOpenInstitutionalModal?: (modal: InstitutionalModalType) => void;
   onNavigateToAuthor?: () => void;
+  externalSelectedVolumeId?: string | null;
+  onClearVolumeFilter?: () => void;
 }
 
 export default function ReaderView({ 
@@ -22,13 +24,16 @@ export default function ReaderView({
   externalSearchQuery = '',
   onSearchChange,
   onOpenInstitutionalModal,
-  onNavigateToAuthor
+  onNavigateToAuthor,
+  externalSelectedVolumeId = null,
+  onClearVolumeFilter
 }: ReaderViewProps) {
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(externalSelectedArticle || null);
   const [selectedTab, setSelectedTab] = useState<'abstract' | 'pdf' | 'figures' | 'reviews'>('abstract');
   const [expandedAbstractId, setExpandedAbstractId] = useState<string | null>(null);
+  const [selectedVolumeFilter, setSelectedVolumeFilter] = useState<string | null>(externalSelectedVolumeId);
 
   useEffect(() => {
     if (externalSelectedArticle) {
@@ -42,6 +47,12 @@ export default function ReaderView({
       setSearchQuery(externalSearchQuery);
     }
   }, [externalSearchQuery]);
+
+  useEffect(() => {
+    if (externalSelectedVolumeId !== undefined) {
+      setSelectedVolumeFilter(externalSelectedVolumeId);
+    }
+  }, [externalSelectedVolumeId]);
 
   const handleSearchChange = (val: string) => {
     setSearchQuery(val);
@@ -74,7 +85,8 @@ export default function ReaderView({
       art.keywords.some(key => key.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesCategory = selectedCategory ? art.category === selectedCategory : true;
-    return matchesSearch && matchesCategory;
+    const matchesVolume = selectedVolumeFilter ? art.publishedInVolumeId === selectedVolumeFilter : true;
+    return matchesSearch && matchesCategory && matchesVolume;
   });
 
   return (
@@ -175,12 +187,50 @@ export default function ReaderView({
         <div className="lg:col-span-8 space-y-4">
           <div className="flex justify-between items-center pb-2 border-b border-white/10">
             <h3 className="font-serif text-lg font-bold text-white">
-              {selectedCategory ? `Artículos en "${selectedCategory}"` : searchQuery ? `Resultados de búsqueda` : 'Publicaciones Recientes'}
+              {selectedVolumeFilter 
+                ? `Artículos de esta Edición` 
+                : selectedCategory 
+                  ? `Artículos en "${selectedCategory}"` 
+                  : searchQuery 
+                    ? `Resultados de búsqueda` 
+                    : 'Publicaciones Recientes'}
             </h3>
             <span className="text-xs text-slate-400 font-mono">
               {filteredArticles.length} resultados encontrados
             </span>
           </div>
+
+          {/* Active Volume Filter Banner */}
+          {selectedVolumeFilter && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-cyan-950/40 border border-cyan-400/40 rounded-2xl backdrop-blur-md shadow-lg shadow-cyan-950/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
+                  <Archive className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                      Filtro de Edición Activo
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping inline-block" />
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-serif font-bold text-white mt-0.5">
+                    {volumes.find(v => v.id === selectedVolumeFilter)?.title || selectedVolumeFilter}
+                  </h4>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedVolumeFilter(null);
+                  if (onClearVolumeFilter) onClearVolumeFilter();
+                }}
+                className="px-3 py-1.5 text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 hover:border-cyan-400/40 self-end sm:self-auto shrink-0"
+              >
+                <X className="w-3.5 h-3.5 text-slate-400" />
+                <span>Ver todos los volúmenes</span>
+              </button>
+            </div>
+          )}
 
           {filteredArticles.length === 0 ? (
             <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
@@ -410,35 +460,52 @@ export default function ReaderView({
               <BookOpen className="w-4 h-4 text-cyan-400" />
             </h4>
             <div className="space-y-3">
-              {volumes.map((vol) => (
-                <div 
-                  key={vol.id} 
-                  className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all cursor-pointer border ${
-                    vol.isCurrent 
-                      ? 'border-cyan-400/40 bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
-                      : 'border-white/5 bg-white/[0.02] hover:bg-white/5'
-                  }`}
-                  onClick={() => {
-                    const artsOfVol = publishedArticles.filter(a => a.publishedInVolumeId === vol.id);
-                    if(artsOfVol.length > 0) {
-                      setSearchQuery('');
-                      setSelectedCategory(null);
-                      const firstArtOfVol = artsOfVol[0];
-                      setSelectedArticle(firstArtOfVol);
-                    } else {
-                      alert(`El volumen "${vol.title}" no tiene artículos simulados en esta versión.`);
-                    }
-                  }}
-                >
-                  <FileText className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="text-xs font-semibold text-white leading-tight">
-                      {vol.title.split(':')[0]}
-                    </h5>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">Año {vol.year} · Publicado el {vol.publishedAt}</p>
+              {volumes.map((vol) => {
+                const isSelected = selectedVolumeFilter === vol.id;
+                return (
+                  <div 
+                    key={vol.id} 
+                    className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all cursor-pointer border ${
+                      isSelected
+                        ? 'border-cyan-400 bg-cyan-950/60 shadow-[0_0_20px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/50'
+                        : vol.isCurrent 
+                          ? 'border-cyan-400/40 bg-cyan-950/30 hover:bg-cyan-950/40' 
+                          : 'border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-white/15'
+                    }`}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedVolumeFilter(null);
+                        if (onClearVolumeFilter) onClearVolumeFilter();
+                      } else {
+                        setSelectedVolumeFilter(vol.id);
+                        setSearchQuery('');
+                        setSelectedCategory(null);
+                        const catalogEl = document.getElementById('catalog-section');
+                        if (catalogEl) {
+                          catalogEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }
+                    }}
+                  >
+                    <FileText className={`w-4 h-4 shrink-0 mt-0.5 ${isSelected ? 'text-cyan-300' : 'text-cyan-400'}`} />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-semibold text-white leading-tight">
+                          {vol.title.split(':')[0]}
+                        </h5>
+                        {isSelected && (
+                          <span className="text-[9px] font-mono uppercase text-cyan-300 bg-cyan-500/20 px-1.5 py-0.5 rounded font-bold">
+                            Activo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        Año {vol.year} · {vol.articleCount || 8} Artículos
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

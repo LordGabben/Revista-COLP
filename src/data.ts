@@ -1,8 +1,19 @@
 import { Article, Volume, User, JournalConfig } from './types';
 import currentVolumeCoverImg from './assets/images/current_volume_cover_1790466202632.jpg';
 import dentalHeroImg from './assets/images/dental_research_hero_1790466211700.jpg';
+import coverBiomaterialsImg from './assets/images/cover_biomaterials_bone_1790468595959.jpg';
+import coverEndodonticsImg from './assets/images/cover_endodontics_cbct_1790468605223.jpg';
+import coverPediatricImg from './assets/images/cover_pediatric_dentistry_1790468615922.jpg';
+import coverZygomaticImg from './assets/images/cover_zygomatic_implants_1790468736059.jpg';
 
-export { currentVolumeCoverImg, dentalHeroImg };
+export { 
+  currentVolumeCoverImg, 
+  dentalHeroImg, 
+  coverBiomaterialsImg, 
+  coverEndodonticsImg, 
+  coverPediatricImg,
+  coverZygomaticImg 
+};
 
 export const JOURNAL_INFO: JournalConfig = {
   name: 'Scientia Dentis "Revista Científica"',
@@ -127,27 +138,62 @@ export const INITIAL_VOLUMES: Volume[] = [
     year: 2026,
     isCurrent: true,
     publishedAt: "2026-06-15",
-    coverImage: currentVolumeCoverImg
+    coverImage: currentVolumeCoverImg,
+    articleCount: 6,
+    theme: "Odontología Avanzada & Biomecánica",
+    pdfUrl: "Scientia_Dentis_Vol12_Num2_2026.pdf"
   },
   {
     id: "v12n1",
-    title: "Vol. 12 Núm. 1 (2025): Avances en Periodoncia e Implantología Clínica",
+    title: "Vol. 12 Núm. 1 (2026): Innovación en Biomateriales y Regeneración Ósea",
     volumeNumber: 12,
     issueNumber: 1,
-    year: 2025,
+    year: 2026,
     isCurrent: false,
-    publishedAt: "2025-12-10",
-    coverImage: dentalHeroImg
+    publishedAt: "2026-01-20",
+    coverImage: coverBiomaterialsImg,
+    articleCount: 8,
+    theme: "Biomateriales y Regeneración Ósea",
+    pdfUrl: "Scientia_Dentis_Vol12_Num1_2026.pdf"
   },
   {
     id: "v11n2",
-    title: "Vol. 11 Núm. 2 (2024): Nuevos Horizontes en Endodoncia y Odontología Restauradora",
+    title: "Vol. 11 Núm. 2 (2025): Endodoncia Microscópica y Tomografía CBCT",
     volumeNumber: 11,
+    issueNumber: 2,
+    year: 2025,
+    isCurrent: false,
+    publishedAt: "2025-08-14",
+    coverImage: coverEndodonticsImg,
+    articleCount: 7,
+    theme: "Endodoncia Microscópica & CBCT",
+    pdfUrl: "Scientia_Dentis_Vol11_Num2_2025.pdf"
+  },
+  {
+    id: "v11n1",
+    title: "Vol. 11 Núm. 1 (2025): Odontopediatría Clínica y Prevención Temprana",
+    volumeNumber: 11,
+    issueNumber: 1,
+    year: 2025,
+    isCurrent: false,
+    publishedAt: "2025-02-18",
+    coverImage: coverPediatricImg,
+    articleCount: 8,
+    theme: "Odontopediatría & Prevención",
+    pdfUrl: "Scientia_Dentis_Vol11_Num1_2025.pdf"
+  },
+  {
+    id: "v10n2",
+    title: "Vol. 10 Núm. 2 (2024): Rehabilitación Oral e Implantes Cigomáticos",
+    volumeNumber: 10,
     issueNumber: 2,
     year: 2024,
     isCurrent: false,
-    publishedAt: "2024-06-20",
-    coverImage: currentVolumeCoverImg
+    publishedAt: "2024-09-10",
+    coverImage: coverZygomaticImg,
+    articleCount: 9,
+    theme: "Rehabilitación Oral & Cigomáticos",
+    pdfUrl: "Scientia_Dentis_Vol10_Num2_2024.pdf"
   }
 ];
 
@@ -581,5 +627,93 @@ export const INITIAL_ARTICLES: Article[] = [
       "Análisis estadístico (MTT y ANOVA) bien detallado.",
       "Palabras clave coincidentes con terminología MeSH."
     ]
+  },
+  {
+    id: "art_v12n1_1",
+    title: "Evaluación histomorfométrica de matrices óseas aloplásticas bifásicas en regeneración ósea guiada: Ensayo clínico aleatorizado a 6 meses",
+    abstract: "INTRODUCCIÓN: La regeneración ósea guiada (ROG) requiere biomateriales con tasas óptimas de reabsorción y neoformación vascular. El objetivo fue evaluar la densidad mineral y formación ósea de una matriz aloplástica bifásica (HA/TCP 60/40) en defectos óseos alveolares.\n\nMÉTODOS: Ensayo clínico aleatorizado con 30 pacientes sometidos a preservación alveolar tras exodoncia. Se obtuvieron biopsias con trefina a los 6 meses durante la colocación de implantes y se analizaron por microtomografía e histología óptica.\n\nRESULTADOS: La media de neoformación de hueso trabecular vital fue del 38.4% ± 5.2%, con un remanente de biomaterial del 14.2% integrado a la matriz ósea sin signos de infiltrado inflamatorio adverso.\n\nCONCLUSIONES: El biomaterial aloplástico bifásico demuestra una excelente osteoconducción y soporte estructural para la posterior colocación exitosa de fijaciones de titanio.",
+    authors: ["Dr. Carlos Baeza-Ahumada", "Dr. Alejandro Ruiz, PhD", "Dra. Helena Santander-Gómez"],
+    authorEmails: ["cbaeza@hospitaldental.cl", "aruiz@universidad.edu", "hsantander@universidad.cl"],
+    affiliations: ["Hospital Clínico Odontológico, Universidad Metropolitana", "Facultad de Odontología, Universidad de Valparaíso"],
+    keywords: ["Regeneración ósea guiada", "Biomateriales", "Fosfatos de calcio", "Histomorfometría"],
+    category: "Implantología Oral",
+    submittedAt: "2025-11-12",
+    status: "published",
+    publishedInVolumeId: "v12n1",
+    doi: "https://doi.org/10.58472/sd.2026.12101",
+    manuscriptFile: { name: "Baeza_Biomateriales_ROG.pdf", size: "3.1 MB", format: "pdf" },
+    reviewers: ["rev1"],
+    reviews: [],
+    references: ["Buser D, et al. 20-year results of implant placement in regenerated bone. J Dent Res. 2012;91(7):673-679."],
+    wordCount: 3600,
+    hasStructuredAbstract: true,
+    formattingScore: 96,
+    formattingReport: ["Estructura metodológica IMRyD impecable."]
+  },
+  {
+    id: "art_v11n2_1",
+    title: "Precisión diagnóstica de la tomografía computarizada cone beam (CBCT) en la detección de conductos radiculares accesorios mesiovestibulares (MB2) en primeros molares maxilares",
+    abstract: "INTRODUCCIÓN: La omisión del conducto MB2 es una de las causas más frecuentes de fracaso del tratamiento endodóntico en molares superiores. Se evaluó la concordancia diagnóstica entre la exploración con microscopio operatorio y la tomografía CBCT de campo reducido (FOV 5x5).\n\nMÉTODOS: Estudio transversal analítico sobre 120 primeros molares maxilares tratados por especialistas en endodoncia, comparando hallazgos tomográficos preoperatorios con hallazgos clínicos intraoperatorios.\n\nRESULTADOS: La CBCT demostró una sensibilidad del 94.2% y especificidad del 91.5% para la detección del MB2. La incidencia total de dicho conducto en la muestra fue del 78.3%.\n\nCONCLUSIONES: La tomografía CBCT de alta resolución optimiza la tasa de localización del conducto MB2 y minimiza el riesgo de iatrogenias durante la apertura cameral.",
+    authors: ["Dra. Claudia Espinoza, PhD", "Dr. Nelson Alvear-Castillo"],
+    authorEmails: ["cespinoza@odontocentro.cl", "nalvear@clinica.cl"],
+    affiliations: ["Departamento de Endodoncia, Universidad de Chile", "Centro de Diagnóstico Maxilofacial"],
+    keywords: ["CBCT", "Conducto MB2", "Endodoncia microscópica", "Anatomía radicular"],
+    category: "Endodoncia",
+    submittedAt: "2025-06-10",
+    status: "published",
+    publishedInVolumeId: "v11n2",
+    doi: "https://doi.org/10.58472/sd.2025.11201",
+    manuscriptFile: { name: "Espinoza_CBCT_MB2_Endodoncia.pdf", size: "4.4 MB", format: "pdf" },
+    reviewers: ["rev2"],
+    reviews: [],
+    references: ["Blattner TC, et al. In vitro comparison of CBCT and operative microscope in MB2 canals. J Endod. 2010;36(6):1031-1035."],
+    wordCount: 3450,
+    hasStructuredAbstract: true,
+    formattingScore: 97,
+    formattingReport: ["Cumplimiento total con directrices de imagenología."]
+  },
+  {
+    id: "art_v11n1_1",
+    title: "Eficacia de barnices fluorados adicionados con nanopartículas de quitosano en la remineralización de lesiones de mancha blanca en esmalte infantil",
+    abstract: "INTRODUCCIÓN: Las lesiones cariosas iniciales de mancha blanca en dentición primaria representan el objetivo prioritario de la odontología mínimamente invasiva. Se evaluó la microdureza superficial del esmalte tras la aplicación de barniz con nanopartículas de quitosano.\n\nMÉTODOS: Estudio experimental in vitro con bloques de esmalte bovino sometidos a ciclos de desmineralización-remineralización de pH durante 14 días.\n\nRESULTADOS: El grupo tratado con nanopartículas de quitosano y flúor mostró una recuperación de microdureza Knoop un 32% mayor que el barniz de fluoruro de sodio convencional (p < 0.01).\n\nCONCLUSIONES: La sinergia entre el quitosano y el fluoruro acelera la formación de cristales de fluorapatita protectores frente al ataque ácido.",
+    authors: ["Dr. Mauricio Valenzuela, MSc", "Dra. Sofía Mendoza, PhD"],
+    authorEmails: ["mvalenzuela@ortodental.org", "smendoza@biomateriales.edu"],
+    affiliations: ["Sociedad Iberoamericana de Ortodoncia", "Centro de Investigación en Bioingeniería"],
+    keywords: ["Mancha blanca", "Quitosano", "Fluoruro", "Odontopediatría", "Remineralización"],
+    category: "Odontopediatría",
+    submittedAt: "2024-12-05",
+    status: "published",
+    publishedInVolumeId: "v11n1",
+    doi: "https://doi.org/10.58472/sd.2025.11101",
+    manuscriptFile: { name: "Valenzuela_Quitosano_Fluor_Esmalte.pdf", size: "2.8 MB", format: "pdf" },
+    reviewers: ["rev3"],
+    reviews: [],
+    references: ["Featherstone JD. Dental caries: a dynamic disease process. Aust Dent J. 2008;53(3):286-291."],
+    wordCount: 3200,
+    hasStructuredAbstract: true,
+    formattingScore: 95,
+    formattingReport: ["Formato completo según normas Vancouver."]
+  },
+  {
+    id: "art_v10n2_1",
+    title: "Tasa de éxito y satisfacción protésica a 5 años en pacientes desdentados totales rehabilitados con implantes cigomáticos: Estudio de cohorte retrospectivo",
+    abstract: "INTRODUCCIÓN: La atrofia severa del maxilar superior edéntulo constituye un desafío quirúrgico complejo. Los implantes cigomáticos ofrecen una alternativa a los injertos óseos de cresta ilíaca.\n\nMÉTODOS: Seguimiento clínico y radiográfico a 5 años de 42 pacientes rehabilitados con 168 implantes cigomáticos inmediatos ferulizados.\n\nRESULTADOS: La tasa acumulada de supervivencia de los implantes fue del 97.6%, con una puntuación de satisfacción estética y masticatoria (OHIP-14) superior al 92%.\n\nCONCLUSIONES: La rehabilitación con anclaje cigomático constituye una terapéutica predecible y de rápida función para maxilares atróficos clase V y VI de Cawood.",
+    authors: ["Dr. Carlos Baeza-Ahumada", "Dr. Gonzalo Martínez-Rojas"],
+    authorEmails: ["cbaeza@hospitaldental.cl", "gmartinez@colp.org.bo"],
+    affiliations: ["Hospital Clínico Odontológico", "Colegio de Odontólogos de La Paz (COLP)"],
+    keywords: ["Implantes cigomáticos", "Maxilar atrófico", "Rehabilitación protésica", "Supervivencia clínica"],
+    category: "Cirugía Maxilofacial",
+    submittedAt: "2024-07-15",
+    status: "published",
+    publishedInVolumeId: "v10n2",
+    doi: "https://doi.org/10.58472/sd.2024.10201",
+    manuscriptFile: { name: "Baeza_Implantes_Cigomaticos_5Anos.pdf", size: "5.1 MB", format: "pdf" },
+    reviewers: ["rev1", "rev4"],
+    reviews: [],
+    references: ["Branemark PI, et al. Zygoma fixture in the management of severe atrophy. Int J Oral Maxillofac Implants. 2004;19(1):48-61."],
+    wordCount: 3900,
+    hasStructuredAbstract: true,
+    formattingScore: 98,
+    formattingReport: ["Estudio de cohorte con seguimiento a largo plazo verificado."]
   }
 ];
