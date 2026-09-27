@@ -111,18 +111,18 @@ export default function Header({
       <div className="backdrop-blur-2xl bg-slate-950/80 border border-white/10 rounded-2xl shadow-[0_10px_35px_-5px_rgba(0,0,0,0.85),0_0_20px_rgba(6,182,212,0.08)] ring-1 ring-white/5 transition-all">
         
         {/* Main Header Row */}
-        <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 lg:gap-6">
+        <div className="px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-2 lg:gap-3 2xl:gap-6 min-w-0">
           
           {/* Brand Wordmark & Official Seal */}
           <div 
             onClick={onNavigateHome}
-            className="flex items-center gap-3 cursor-pointer group shrink-0"
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group shrink-0"
             id="brand-logo-button"
           >
             {/* Glowing Ring Around Seal */}
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/40 via-blue-600/30 to-teal-400/40 rounded-full blur-xs opacity-75 group-hover:opacity-100 transition-opacity" />
-              <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden border border-cyan-400/50 bg-[#e9e5db] shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border border-cyan-400/50 bg-[#e9e5db] shadow-md flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                 <img 
                   src={logoImg} 
                   alt="Scientia Dentis Logo" 
@@ -134,7 +134,7 @@ export default function Header({
             
             <div className="leading-tight">
               <div className="flex items-baseline gap-1.5 flex-wrap">
-                <span className="font-serif text-lg sm:text-xl font-black text-white tracking-tight group-hover:text-cyan-200 transition-colors">
+                <span className="font-serif text-base sm:text-lg 2xl:text-xl font-black text-white tracking-tight group-hover:text-cyan-200 transition-colors">
                   Scientia Dentis
                 </span>
                 <span className="font-serif italic text-xs sm:text-sm font-semibold text-cyan-400">
@@ -150,10 +150,10 @@ export default function Header({
           </div>
 
           {/* Center Navigation Links (Higgsfield Clean Minimalist Style) */}
-          <nav className="hidden xl:flex items-center gap-1 text-xs font-medium text-slate-300">
+          <nav className="hidden xl:flex items-center gap-0.5 2xl:gap-1 text-[11px] 2xl:text-xs font-medium text-slate-300 shrink">
             <button
               onClick={onNavigateHome}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-2 2xl:px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 currentRole === 'reader'
                   ? 'bg-white/10 text-white shadow-xs font-semibold' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -163,32 +163,32 @@ export default function Header({
             </button>
             <button
               onClick={onNavigateCurrentIssue}
-              className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
             >
               Edición Actual
             </button>
             <button
               onClick={onNavigateArchive}
-              className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
             >
               Catálogo & Archivo
             </button>
             <button
               onClick={() => onOpenModal('guidelines')}
-              className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
             >
               Guía de Autores
             </button>
             <button
               onClick={() => onOpenModal('about')}
-              className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
             >
               Comité Editorial
             </button>
             
             <button
               onClick={handleAuthorAction}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2 2xl:px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 currentRole === 'author' 
                   ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 font-semibold' 
                   : 'text-teal-400 hover:bg-teal-500/10'
@@ -201,7 +201,7 @@ export default function Header({
             {currentUser?.role === 'superadmin' && (
               <button
                 onClick={() => onChangeRole('superadmin')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 2xl:px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   currentRole === 'superadmin'
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-semibold'
                     : 'text-purple-400 hover:bg-purple-500/10'
@@ -214,11 +214,11 @@ export default function Header({
           </nav>
 
           {/* Right Utility: Interactive Search + Authentication / User Island */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             
-            {/* Quick Floating Search Input with Keyboard Badge */}
+            {/* Quick Floating Search Input with Keyboard Badge (Shown on ultra-wide screens to prevent header overflow) */}
             {onSearchChange && (
-              <div className="relative hidden md:block w-36 lg:w-48">
+              <div className="relative hidden 2xl:block w-36 2xl:w-44">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400/70 w-3.5 h-3.5" />
                 <input
                   type="text"
@@ -364,10 +364,10 @@ export default function Header({
               </div>
             ) : (
               /* Public / Guest Auth Buttons */
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={() => onOpenAuthModal('login')}
-                  className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-cyan-400/40 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-white/10 hover:border-cyan-400/40 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
                 >
                   <LogIn className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="hidden sm:inline">Iniciar Sesión</span>
@@ -375,7 +375,7 @@ export default function Header({
 
                 <button
                   onClick={() => onOpenAuthModal('register')}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-cyan-950/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-cyan-950/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 whitespace-nowrap"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Crear Cuenta</span>
