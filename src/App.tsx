@@ -45,6 +45,27 @@ export default function App() {
     }
   }, []);
 
+  // Keyboard shortcut Ctrl+K / Cmd+K to jump to search input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (currentRole !== 'reader') {
+          setCurrentRole('reader');
+        }
+        setTimeout(() => {
+          const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentRole]);
+
   // 2. Persist state changes
   const saveState = (updatedArticles: Article[], updatedVolumes?: Volume[]) => {
     setArticles(updatedArticles);
@@ -157,23 +178,39 @@ export default function App() {
   const currentVolume = volumes.find(v => v.isCurrent) || volumes[0] || INITIAL_VOLUMES[0];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-cyan-500/20" id="app-root-container">
+    <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col justify-between selection:bg-cyan-500/30 relative overflow-x-hidden" id="app-root-container">
       
-      {/* Refactored Institutional Header */}
-      <Header 
-        currentRole={currentRole} 
-        onChangeRole={setCurrentRole} 
-        journalInfo={JOURNAL_INFO}
-        onOpenModal={setActiveModal}
-        onNavigateHome={handleNavigateHome}
-        onNavigateCurrentIssue={handleNavigateCurrentIssue}
-        onNavigateArchive={handleNavigateArchive}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+      {/* Volumetric Ambient Lighting Orbs (Higgsfield Aesthetic) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Top Central Beam */}
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] bg-gradient-to-b from-cyan-500/15 via-indigo-600/10 to-transparent rounded-full blur-[140px]" />
+        {/* Left Cyan Ambient Orb */}
+        <div className="absolute top-1/4 -left-48 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[160px]" />
+        {/* Right Violet/Indigo Ambient Orb */}
+        <div className="absolute top-1/2 -right-48 w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[160px]" />
+        {/* Bottom Teal Ambient Glow */}
+        <div className="absolute bottom-0 left-1/3 w-[700px] h-[400px] bg-teal-500/10 rounded-full blur-[150px]" />
+        {/* Radial Vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,transparent_0%,rgba(3,7,18,0.75)_100%)]" />
+      </div>
+
+      {/* Floating Header */}
+      <div className="relative z-50">
+        <Header 
+          currentRole={currentRole} 
+          onChangeRole={setCurrentRole} 
+          journalInfo={JOURNAL_INFO}
+          onOpenModal={setActiveModal}
+          onNavigateHome={handleNavigateHome}
+          onNavigateCurrentIssue={handleNavigateCurrentIssue}
+          onNavigateArchive={handleNavigateArchive}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      </div>
 
       {/* Main Content Workspace */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full">
         {currentRole === 'reader' && (
           <>
             {/* Landing Hero "Telón Editorial" */}
@@ -201,7 +238,7 @@ export default function App() {
         )}
 
         {currentRole === 'author' && (
-          <div className="fade-in">
+          <div className="fade-in bg-slate-900/80 border border-white/10 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
             <AuthorDashboard 
               articles={articles} 
               onAddArticle={handleAddArticle} 
@@ -211,7 +248,7 @@ export default function App() {
         )}
 
         {currentRole === 'reviewer' && (
-          <div className="fade-in">
+          <div className="fade-in bg-slate-900/80 border border-white/10 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
             <ReviewerDashboard 
               articles={articles} 
               onAddReview={handleAddReview} 
@@ -220,7 +257,7 @@ export default function App() {
         )}
 
         {currentRole === 'editor' && (
-          <div className="fade-in">
+          <div className="fade-in bg-slate-900/80 border border-white/10 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
             <EditorDashboard 
               articles={articles} 
               volumes={volumes} 
@@ -238,12 +275,14 @@ export default function App() {
         onSelectModal={setActiveModal}
       />
 
-      {/* Refactored Institutional Footer */}
-      <Footer 
-        journalInfo={JOURNAL_INFO}
-        onOpenModal={setActiveModal}
-        onResetDemo={handleResetDemo}
-      />
+      {/* Institutional Footer */}
+      <div className="relative z-10">
+        <Footer 
+          journalInfo={JOURNAL_INFO}
+          onOpenModal={setActiveModal}
+          onResetDemo={handleResetDemo}
+        />
+      </div>
 
     </div>
   );

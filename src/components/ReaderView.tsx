@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, BookOpen, Calendar, ChevronRight, FileText, Download, Tag, Award, Users, ExternalLink, HelpCircle, FileCheck2, Sparkles, ShieldCheck, Image, Paperclip, Check } from 'lucide-react';
+import { Search, Filter, BookOpen, Calendar, ChevronRight, FileText, Download, Tag, Award, Users, ExternalLink, HelpCircle, FileCheck2, Sparkles, ShieldCheck, Image, Paperclip, Check, Clock, Eye } from 'lucide-react';
 import { Article, Volume, InstitutionalModalType } from '../types';
 import { DENTAL_CATEGORIES, JOURNAL_INFO, INDEXING_SYSTEMS } from '../data';
 
@@ -28,6 +28,7 @@ export default function ReaderView({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(externalSelectedArticle || null);
   const [selectedTab, setSelectedTab] = useState<'abstract' | 'pdf' | 'figures' | 'reviews'>('abstract');
+  const [expandedAbstractId, setExpandedAbstractId] = useState<string | null>(null);
 
   useEffect(() => {
     if (externalSelectedArticle) {
@@ -56,6 +57,11 @@ export default function ReaderView({
     }
   };
 
+  const toggleQuickAbstract = (articleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedAbstractId(prev => prev === articleId ? null : articleId);
+  };
+
   const publishedArticles = articles.filter(a => a.status === 'published');
   const currentVolume = volumes.find(v => v.isCurrent) || volumes[0];
 
@@ -74,70 +80,88 @@ export default function ReaderView({
   return (
     <div className="fade-in space-y-8" id="reader-view">
       
-      {/* Search & Category Filter Section with Anchor ID */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm scroll-mt-28 space-y-4" id="catalog-section">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 pb-3 border-b border-slate-100">
+      {/* Floating Glassmorphic Search & Category Filter Section with Anchor ID */}
+      <div className="backdrop-blur-2xl bg-slate-900/60 border border-white/10 rounded-3xl p-5 sm:p-7 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.85)] scroll-mt-28 space-y-5" id="catalog-section">
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-4 border-b border-white/10">
           <div>
-            <h3 className="font-serif text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
+                Colección Científica Oficial
+              </span>
+            </div>
+            <h3 className="font-serif text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Catálogo de Artículos Científicos
             </h3>
-            <p className="text-xs text-slate-500 font-sans mt-0.5">
-              Filtrado por especialidad odontológica, palabras clave y autores indexados
+            <p className="text-xs text-slate-400 font-sans mt-0.5">
+              Investigaciones arbitradas, metadatos abiertos y casos clínicos estomatológicos
             </p>
           </div>
-          <span className="text-xs font-mono text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-            {filteredArticles.length} artículos disponibles
-          </span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-3 py-1.5 rounded-full shadow-xs">
+              {filteredArticles.length} artículos indexados
+            </span>
+          </div>
         </div>
 
+        {/* Floating Search Bar with Luminous Glow & Keyboard Keycap */}
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Buscar por título, autor, resumen, palabras clave o DOI..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
+              className="w-full pl-11 pr-24 py-3 bg-slate-950/80 border border-white/10 hover:border-cyan-500/40 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
               id="search-input"
             />
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-slate-500 bg-white/5 border border-white/10 rounded-md px-1.5 py-0.5 pointer-events-none">
+                Ctrl+K
+              </span>
+            </div>
           </div>
 
           {searchQuery && (
             <button
               onClick={() => handleSearchChange('')}
-              className="px-3 py-2 text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-3 text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-colors cursor-pointer whitespace-nowrap"
             >
               Limpiar búsqueda
             </button>
           )}
         </div>
 
-        {/* Specialized Dental Categories Filter Bar */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+        {/* Specialized Dental Categories Filter Chips (Translucent Neon Style) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-mono cursor-pointer transition-all ${
               selectedCategory === null
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] font-semibold'
+                : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5'
             }`}
           >
-            Todas las Especialidades ({publishedArticles.length})
+            Todas ({publishedArticles.length})
           </button>
           {DENTAL_CATEGORIES.map((cat) => {
             const count = publishedArticles.filter(a => a.category === cat).length;
+            const isSelected = selectedCategory === cat;
             return (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
-                  selectedCategory === cat
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                className={`px-3.5 py-1.5 rounded-full text-xs font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] font-semibold'
+                    : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5'
                 }`}
               >
-                {cat} {count > 0 && <span className="opacity-75 text-[10px]">({count})</span>}
+                <span>{cat}</span>
+                {count > 0 && <span className="opacity-75 text-[10px]">({count})</span>}
               </button>
             );
           })}
@@ -146,128 +170,224 @@ export default function ReaderView({
 
       {/* Main Grid: Articles List & Volumes Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
         {/* Published Articles List */}
         <div className="lg:col-span-8 space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-            <h3 className="font-serif text-lg font-bold text-slate-900">
-              {selectedCategory ? `Artículos en "${selectedCategory}"` : searchQuery ? `Resultados de búsqueda` : 'Artículos Publicados'}
+          <div className="flex justify-between items-center pb-2 border-b border-white/10">
+            <h3 className="font-serif text-lg font-bold text-white">
+              {selectedCategory ? `Artículos en "${selectedCategory}"` : searchQuery ? `Resultados de búsqueda` : 'Publicaciones Recientes'}
             </h3>
-            <span className="text-xs text-slate-500 font-medium font-mono">
-              Mostrando {filteredArticles.length} resultados
+            <span className="text-xs text-slate-400 font-mono">
+              {filteredArticles.length} resultados encontrados
             </span>
           </div>
 
           {filteredArticles.length === 0 ? (
-            <div className="bg-white border border-slate-100 rounded-xl p-12 text-center shadow-3xs">
-              <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-600 font-medium">No se encontraron artículos publicados con esos criterios.</p>
+            <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
+              <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-white font-medium">No se encontraron artículos con esos criterios.</p>
               <p className="text-slate-400 text-xs mt-1">Pruebe modificando su búsqueda o seleccionando otra especialidad dental.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredArticles.map((art) => (
-                <div 
-                  key={art.id} 
-                  id={`article-card-${art.id}`}
-                  className="bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-500 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
-                  onClick={() => {
-                    setSelectedArticle(art);
-                    setSelectedTab('abstract');
-                  }}
-                >
-                  <div>
-                    {/* Unboxed Metadata Header (anti-slop) */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-mono mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-blue-700 tracking-wide uppercase text-[11px]">
-                          {art.category}
+              {filteredArticles.map((art, idx) => {
+                const isQuickExpanded = expandedAbstractId === art.id;
+                // Realistic metrics simulation for display
+                const estimatedMinutes = Math.max(3, Math.round(art.wordCount / 200));
+                const simulatedViews = 620 + (idx * 145);
+                const simulatedDownloads = 140 + (idx * 38);
+
+                return (
+                  <div 
+                    key={art.id} 
+                    id={`article-card-${art.id}`}
+                    className="glass-card glass-card-hover rounded-3xl p-6 sm:p-7 border border-white/10 relative overflow-hidden group cursor-pointer"
+                    onClick={() => {
+                      setSelectedArticle(art);
+                      setSelectedTab('abstract');
+                    }}
+                  >
+                    {/* Atmospheric Glow on Hover */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-cyan-500/10 transition-all" />
+
+                    <div>
+                      {/* Category Tag as Translucent Neon Pill + Open Access badge */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-full text-[11px] font-mono font-medium bg-cyan-950/70 border border-cyan-400/40 text-cyan-300 shadow-xs">
+                            {art.category}
+                          </span>
+                          <span className="text-slate-600" aria-hidden="true">·</span>
+                          <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                            <Award className="w-3.5 h-3.5" /> CC BY 4.0 Open Access
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          DOI: {art.doi ? art.doi.replace('https://doi.org/', '') : '10.58472/sd.2026'}
                         </span>
-                        <span aria-hidden="true">·</span>
-                        <span className="text-emerald-700 font-medium">Acceso Abierto (CC BY 4.0)</span>
                       </div>
-                      <span className="text-[11px] text-slate-400">
-                        DOI: {art.doi ? art.doi.replace('https://doi.org/', '') : '10.58472/sd.2026'}
-                      </span>
-                    </div>
 
-                    <h4 className="font-serif text-base sm:text-xl font-bold text-slate-900 group-hover:text-blue-700 leading-snug transition-colors">
-                      {art.title}
-                    </h4>
+                      {/* Article Title */}
+                      <h4 className="font-serif text-lg sm:text-xl font-bold text-white group-hover:text-cyan-200 leading-snug transition-colors">
+                        {art.title}
+                      </h4>
 
-                    {/* Authors List */}
-                    <div className="flex items-center gap-1.5 mt-2.5 text-xs text-slate-600 font-medium">
-                      <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{art.authors.join(', ')}</span>
-                    </div>
+                      {/* Authors List */}
+                      <div className="flex items-center gap-2 mt-2.5 text-xs text-slate-400 font-medium">
+                        <Users className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span className="line-clamp-1">{art.authors.join(', ')}</span>
+                      </div>
 
-                    {/* Short preview of abstract */}
-                    <p className="text-xs sm:text-sm text-slate-600 mt-3 line-clamp-3 leading-relaxed">
-                      {art.abstract.replace('INTRODUCCIÓN:', '').split('MÉTODOS:')[0].trim()}
-                    </p>
+                      {/* Short abstract preview */}
+                      <p className="text-xs sm:text-sm text-slate-300 mt-3 line-clamp-3 leading-relaxed font-sans">
+                        {art.abstract.replace('INTRODUCCIÓN:', '').split('MÉTODOS:')[0].trim()}
+                      </p>
 
-                    {/* AI Declaration and Peer Review Badges */}
-                    <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-medium">
-                        <Award className="w-3 h-3 text-emerald-600" /> Arbitrado por Pares Doble Ciego
-                      </span>
-                      {art.aiDeclaration?.used ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[11px] font-mono border border-purple-200">
-                          <Sparkles className="w-3 h-3" /> Declaración de IA ({art.aiDeclaration.sectionsUsed.length} secciones)
+                      {/* Discrete Metrics Bar */}
+                      <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center gap-4 text-xs text-slate-400 font-mono">
+                        <span className="flex items-center gap-1.5 text-slate-300" title="Tiempo estimado de lectura">
+                          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>~{estimatedMinutes} min lectura</span>
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-mono border border-slate-200">
-                          <ShieldCheck className="w-3 h-3 text-slate-400" /> Sin IA Generativa
+                        <span className="text-slate-700" aria-hidden="true">·</span>
+                        <span className="flex items-center gap-1.5" title="Lecturas acumuladas">
+                          <Eye className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{simulatedViews} vistas</span>
                         </span>
+                        <span className="text-slate-700" aria-hidden="true">·</span>
+                        <span className="flex items-center gap-1.5" title="Descargas del fascículo y PDF">
+                          <Download className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{simulatedDownloads} descargas</span>
+                        </span>
+                        {art.aiDeclaration?.used ? (
+                          <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-purple-300 bg-purple-950/60 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                            <Sparkles className="w-3 h-3 text-purple-400" /> Declaración IA
+                          </span>
+                        ) : (
+                          <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-slate-400 bg-slate-800/40 border border-white/5 px-2 py-0.5 rounded-full">
+                            <ShieldCheck className="w-3 h-3 text-slate-400" /> Sin IA Generativa
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Quick Abstract Accordion (Higgsfield Style Smooth Preview) */}
+                      {isQuickExpanded && (
+                        <div 
+                          className="mt-4 p-4 rounded-2xl bg-slate-950/80 border border-cyan-500/30 text-xs text-slate-300 space-y-3 fade-in"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                            <span className="font-mono text-[10px] uppercase tracking-wider text-cyan-400 font-bold">
+                              Estructura IMRyD del Manuscrito
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              Arbitrado a doble ciego
+                            </span>
+                          </div>
+                          
+                          <div className="space-y-2 text-xs leading-relaxed max-h-56 overflow-y-auto pr-1">
+                            {art.abstract.split('\n\n').map((paragraph, pIdx) => {
+                              const [heading, ...rest] = paragraph.split(':');
+                              if (rest.length > 0) {
+                                return (
+                                  <div key={pIdx}>
+                                    <strong className="text-cyan-300 font-mono text-[11px] block">{heading}:</strong>
+                                    <p className="text-slate-300 mt-0.5">{rest.join(':').trim()}</p>
+                                  </div>
+                                );
+                              }
+                              return <p key={pIdx}>{paragraph}</p>;
+                            })}
+                          </div>
+
+                          <div className="pt-2 flex justify-between items-center border-t border-white/10 text-xs">
+                            <span className="text-[11px] text-slate-400">
+                              Filiación: {art.affiliations[0] || 'Hospital Clínico COLP'}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setSelectedArticle(art);
+                                setSelectedTab('abstract');
+                              }}
+                              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>Ver Completo</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Metadata and Open button */}
-                  <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3">
-                    <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-500">
-                      {art.keywords.slice(0, 3).map((kw, i) => (
-                        <span key={i} className="text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 font-sans">
-                          {kw}
-                        </span>
-                      ))}
+                    {/* Bottom Actions Row */}
+                    <div className="mt-5 pt-4 border-t border-white/10 flex flex-wrap justify-between items-center gap-3">
+                      <div className="flex flex-wrap gap-1.5 text-[11px]">
+                        {art.keywords.slice(0, 3).map((kw, i) => (
+                          <span key={i} className="text-[10px] text-slate-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/5 font-mono">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Toggle Quick Abstract Button */}
+                        <button
+                          onClick={(e) => toggleQuickAbstract(art.id, e)}
+                          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                          title="Desplegar resumen rápido en esta tarjeta"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>{isQuickExpanded ? 'Ocultar Resumen' : 'Lectura Rápida'}</span>
+                        </button>
+
+                        {/* Open Full Article Button */}
+                        <button
+                          onClick={() => {
+                            setSelectedArticle(art);
+                            setSelectedTab('abstract');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-xs font-semibold text-cyan-300 hover:text-cyan-200 transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                        >
+                          <span>Leer Artículo</span>
+                          <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-blue-600 group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                      Leer Artículo Completo <ChevronRight className="w-4 h-4" />
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
         {/* Sidebar: Volume Archives & Editorial policies */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Scientific Indexing Card */}
-          <div className="bg-slate-950 text-white rounded-2xl p-6 shadow-md border border-slate-800 space-y-4">
+          
+          {/* Scientific Indexing Card (Glassmorphic) */}
+          <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/10 space-y-4">
             <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-semibold block mb-1">
-                Garantías de Calidad COLP
+              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold block mb-1">
+                Garantías Institucionales COLP
               </span>
-              <h4 className="font-serif font-bold text-lg text-white">Indexación y Métricas</h4>
-              <p className="text-xs text-slate-400 mt-1">Cumplimiento riguroso de criterios editoriales internacionales:</p>
+              <h4 className="font-serif font-bold text-lg text-white">Indexación y Calidad Científica</h4>
+              <p className="text-xs text-slate-400 mt-1">Criterios editoriales rigurosos evaluados por organismos internacionales:</p>
             </div>
             
             <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
-              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
                 <span className="text-slate-400 block text-[10px]">Latindex 2.0</span>
                 <span className="font-bold text-cyan-400">Folio 29481</span>
               </div>
-              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
                 <span className="text-slate-400 block text-[10px]">DOAJ</span>
-                <span className="font-bold text-cyan-400">Acceso Abierto</span>
+                <span className="font-bold text-cyan-400">Open Access</span>
               </div>
-              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
                 <span className="text-slate-400 block text-[10px]">SciELO</span>
                 <span className="font-bold text-cyan-400">En Evaluación</span>
               </div>
-              <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">Scholar</span>
+              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
+                <span className="text-slate-400 block text-[10px]">Google Scholar</span>
                 <span className="font-bold text-cyan-400">h5-index: 18</span>
               </div>
             </div>
@@ -275,7 +395,7 @@ export default function ReaderView({
             {onOpenInstitutionalModal && (
               <button
                 onClick={() => onOpenInstitutionalModal('about')}
-                className="w-full mt-2 py-2 px-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-xs text-cyan-300 hover:text-white rounded-xl transition-colors font-medium cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full mt-2 py-2.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-cyan-300 hover:text-white rounded-xl transition-all font-medium cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span>Ver Criterios e Indexación Completa</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -284,16 +404,19 @@ export default function ReaderView({
           </div>
 
           {/* Historical Archives */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <h4 className="font-serif font-bold text-slate-900 border-b border-slate-100 pb-2 mb-3">
-              Archivos y Números Anteriores
+          <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/10">
+            <h4 className="font-serif font-bold text-white border-b border-white/10 pb-2.5 mb-3.5 flex items-center justify-between">
+              <span>Archivos y Fascículos</span>
+              <BookOpen className="w-4 h-4 text-cyan-400" />
             </h4>
             <div className="space-y-3">
               {volumes.map((vol) => (
                 <div 
                   key={vol.id} 
-                  className={`flex items-start gap-3 p-3 rounded-xl transition-all cursor-pointer hover:bg-slate-50 border ${
-                    vol.isCurrent ? 'border-blue-500/40 bg-blue-50/20' : 'border-slate-100'
+                  className={`flex items-start gap-3 p-3.5 rounded-2xl transition-all cursor-pointer border ${
+                    vol.isCurrent 
+                      ? 'border-cyan-400/40 bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
+                      : 'border-white/5 bg-white/[0.02] hover:bg-white/5'
                   }`}
                   onClick={() => {
                     const artsOfVol = publishedArticles.filter(a => a.publishedInVolumeId === vol.id);
@@ -307,27 +430,27 @@ export default function ReaderView({
                     }
                   }}
                 >
-                  <FileText className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <FileText className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                   <div>
-                    <h5 className="text-xs font-semibold text-slate-900 leading-tight">
+                    <h5 className="text-xs font-semibold text-white leading-tight">
                       {vol.title.split(':')[0]}
                     </h5>
-                    <p className="text-[11px] text-slate-500 font-mono mt-0.5">Año {vol.year} • Publicado el {vol.publishedAt}</p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">Año {vol.year} · Publicado el {vol.publishedAt}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Guidelines for Authors */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3 text-xs">
-            <h4 className="font-serif font-bold text-slate-900 flex items-center gap-1.5 text-sm">
-              <HelpCircle className="w-4 h-4 text-blue-600" /> Directrices para Autores
+          {/* Guidelines for Authors Card */}
+          <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/10 space-y-3.5 text-xs">
+            <h4 className="font-serif font-bold text-white flex items-center gap-1.5 text-sm">
+              <HelpCircle className="w-4 h-4 text-cyan-400" /> Directrices para Autores
             </h4>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-slate-300 leading-relaxed">
               <strong>Scientia Dentis</strong> recibe manuscritos originales de investigación, casos clínicos de alto impacto y revisiones sistemáticas conforme a normativas <strong>Vancouver / ICMJE</strong>.
             </p>
-            <ul className="space-y-1.5 text-slate-600 pl-4 list-disc">
+            <ul className="space-y-1.5 text-slate-400 pl-4 list-disc font-sans">
               <li>Estructura IMRyD con resumen estructurado (máx. 250 palabras).</li>
               <li>Arbitraje a doble ciego con revisores externos.</li>
               <li>Sin cargos por publicación (No APC - 100% patrocinado por COLP).</li>
@@ -337,7 +460,7 @@ export default function ReaderView({
               {onOpenInstitutionalModal && (
                 <button
                   onClick={() => onOpenInstitutionalModal('guidelines')}
-                  className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-semibold rounded-xl text-xs transition-colors cursor-pointer text-center"
+                  className="w-full py-2.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-xl text-xs transition-colors cursor-pointer text-center"
                 >
                   Consultar Guía para Autores
                 </button>
@@ -345,13 +468,14 @@ export default function ReaderView({
               {onNavigateToAuthor && (
                 <button
                   onClick={onNavigateToAuthor}
-                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs transition-colors cursor-pointer text-center shadow-xs"
+                  className="w-full py-2.5 px-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl text-xs transition-all cursor-pointer text-center shadow-lg shadow-cyan-900/40"
                 >
                   Enviar un Manuscrito
                 </button>
               )}
             </div>
           </div>
+
         </div>
       </div>
 
@@ -375,7 +499,7 @@ export default function ReaderView({
                 </div>
               </div>
               <button 
-                onClick={() => setSelectedArticle(null)}
+                onClick={handleCloseModal}
                 className="text-slate-400 hover:text-white cursor-pointer p-1.5 hover:bg-slate-800 rounded-lg transition-colors text-lg font-bold font-mono"
               >
                 ✕
