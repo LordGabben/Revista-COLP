@@ -166,17 +166,19 @@ export default function Footer({ journalInfo, onOpenModal, onResetDemo }: Footer
             <div className="space-y-2.5 text-xs text-slate-400">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <span>Sede Central COLP, Av. 16 de Julio (El Prado), La Paz, Bolivia</span>
+                <span>Pasaje Jauregui N° 2248, Edif. Quipus 2do piso, Sopocachi, La Paz, Bolivia</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
-                <a href="mailto:scientia.dentis@colp.org.bo" className="text-slate-200 hover:underline">
-                  scientia.dentis@colp.org.bo
+                <a href="mailto:admcentralcolp@gmail.com" className="text-slate-200 hover:underline">
+                  admcentralcolp@gmail.com
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>+591 (2) 231-5080 / 231-5081</span>
+                <a href="tel:+59122444004" className="text-slate-200 hover:underline">
+                  +591 (2) 2444004
+                </a>
               </div>
             </div>
 
