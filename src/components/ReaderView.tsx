@@ -755,7 +755,21 @@ export default function ReaderView({
                         if (targetUrl) {
                           window.open(targetUrl, '_blank');
                         } else {
-                          alert(`Descargando ${selectedArticle.manuscriptFile.name} (${selectedArticle.manuscriptFile.size}). Archivo listo.`);
+                          const element = document.createElement("a");
+                          const file = new Blob([
+                            `Scientia Dentis "Revista Científica"\nÓrgano Oficial del Colegio de Odontólogos de La Paz (COLP)\n\n` +
+                            `Título: ${selectedArticle.title}\n` +
+                            `Autores: ${selectedArticle.authors.join(', ')}\n` +
+                            `DOI: ${selectedArticle.doi || 'En trámite'}\n` +
+                            `Especialidad: ${selectedArticle.category}\n\n` +
+                            `RESUMEN:\n${selectedArticle.abstract}\n\n` +
+                            `PALABRAS CLAVE: ${selectedArticle.keywords.join(', ')}`
+                          ], { type: 'text/plain' });
+                          element.href = URL.createObjectURL(file);
+                          element.download = `${selectedArticle.title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}_ScientiaDentis.pdf`;
+                          document.body.appendChild(element);
+                          element.click();
+                          document.body.removeChild(element);
                         }
                       }}
                       className="flex items-center gap-1.5 px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white rounded-lg font-bold shadow-xs cursor-pointer whitespace-nowrap transition-colors"

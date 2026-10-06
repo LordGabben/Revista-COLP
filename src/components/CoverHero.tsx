@@ -95,6 +95,14 @@ export default function CoverHero({
     setIsDownloadingPdf(true);
     setDownloadSuccess(false);
 
+    if (currentVolume.pdfUrl) {
+      window.open(currentVolume.pdfUrl, '_blank');
+      setIsDownloadingPdf(false);
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+      return;
+    }
+
     setTimeout(() => {
       setIsDownloadingPdf(false);
       setDownloadSuccess(true);
@@ -110,12 +118,20 @@ export default function CoverHero({
       document.body.removeChild(element);
 
       setTimeout(() => setDownloadSuccess(false), 4000);
-    }, 1400);
+    }, 600);
   };
 
   const handleDownloadArchiveIssue = (vol: Volume) => {
     setIsDownloadingArchivePdf(true);
     setArchiveDownloadSuccess(false);
+
+    if (vol.pdfUrl) {
+      window.open(vol.pdfUrl, '_blank');
+      setIsDownloadingArchivePdf(false);
+      setArchiveDownloadSuccess(true);
+      setTimeout(() => setArchiveDownloadSuccess(false), 3000);
+      return;
+    }
 
     setTimeout(() => {
       setIsDownloadingArchivePdf(false);
@@ -132,7 +148,7 @@ export default function CoverHero({
       document.body.removeChild(element);
 
       setTimeout(() => setArchiveDownloadSuccess(false), 4000);
-    }, 1200);
+    }, 600);
   };
 
   const handleExploreThisArchive = (vol: Volume) => {

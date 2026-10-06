@@ -3,6 +3,7 @@ import { PenTool, FileText, ArrowRight, ArrowLeft, CheckCircle2, UserPlus, Trash
 import { Article, ArticleStatus, AIDeclaration, ArticleFile, AuthorContributor, AuthorRoleType } from '../types';
 import { DENTAL_CATEGORIES, AI_USAGE_SECTIONS_LIST } from '../data';
 import AutoFormatCheck from './AutoFormatCheck';
+import { submitManuscript } from '../services/articlesService';
 
 export const ROLE_CONFIG: Record<AuthorRoleType, { label: string; shortLabel: string; badgeBg: string; textCol: string; borderCol: string; desc: string }> = {
   primary: {
@@ -93,6 +94,8 @@ export default function AuthorDashboard({ articles, onAddArticle, onUpdateArticl
   const [category, setCategory] = useState(DENTAL_CATEGORIES[0]);
   const [keywordsInput, setKeywordsInput] = useState('');
   const [wordCount, setWordCount] = useState(2500);
+  const [realManuscriptFile, setRealManuscriptFile] = useState<File | null>(null);
+  const [submitProgress, setSubmitProgress] = useState<string>('');
 
   // Multi-File states (Manuscript, High-Res Figures, Supplementary)
   const [manuscriptFile, setManuscriptFile] = useState<{
@@ -207,6 +210,7 @@ export default function AuthorDashboard({ articles, onAddArticle, onUpdateArticl
   const handleManuscriptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setRealManuscriptFile(file);
     const ext = file.name.split('.').pop()?.toLowerCase() || 'docx';
     const sizeMb = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
     setManuscriptFile({
@@ -472,47 +476,53 @@ export default function AuthorDashboard({ articles, onAddArticle, onUpdateArticl
     setActiveStep(activeStep - 1);
   };
 
-  const handleSubmit = () => {
-    const keywords = keywordsInput.split(',').map(k => k.trim()).filter(Boolean);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmitProgress('Subiendo manuscrito y registrando en la base de datos Supabase...');
 
-    const newArticle: Article = {
-      id: 'art-' + Date.now(),
-      title,
-      abstract,
-      authors: authorsList.map(a => a.name),
-      authorEmails: authorsList.map(a => a.email),
-      affiliations: authorsList.map(a => a.affiliation),
-      contributors: authorsList,
-      keywords: keywords.length > 0 ? keywords : ["Odontología", "Investigación", "Caso Clínico"],
-      category,
-      submittedAt: new Date().toISOString().split('T')[0],
-      status: 'submitted',
-      manuscriptFile: {
-        name: manuscriptFile.name,
-        size: manuscriptFile.size,
-        format: manuscriptFile.format
-      },
-      figures: figures,
-      supplementaryFiles: supplementaryFiles,
-      reviewers: [],
-      reviews: [],
-      wordCount,
-      hasStructuredAbstract: abstract.toUpperCase().includes('INTRODUCCIÓN') || abstract.toUpperCase().includes('INTRODUCCION'),
-      formattingScore,
-      formattingReport,
-      references,
-      aiDeclaration: {
-        used: aiUsed,
-        sectionsUsed: aiUsed ? aiSections : [],
-        toolsAndScope: aiUsed ? aiDetails : undefined,
-        humanSupervisionConfirmed: true
+    try {
+      const keywords = keywordsInput.split(',').map(k => k.trim()).filter(Boolean);
+
+      const res = await submitManuscript({
+        title,
+        abstract,
+        authors: authorsList.map(a => a.name),
+        authorEmails: authorsList.map(a => a.email),
+        affiliations: authorsList.map(a => a.affiliation),
+        contributors: authorsList,
+        keywords: keywords.length > 0 ? keywords : ["Odontología", "Investigación", "Caso Clínico"],
+        category,
+        wordCount,
+        pdfFile: realManuscriptFile,
+        manuscriptFile,
+        figures,
+        supplementaryFiles,
+        references,
+        aiDeclaration: {
+          used: aiUsed,
+          sectionsUsed: aiUsed ? aiSections : [],
+          toolsAndScope: aiUsed ? aiDetails : undefined,
+          humanSupervisionConfirmed: true
+        },
+        hasStructuredAbstract: abstract.toUpperCase().includes('INTRODUCCIÓN') || abstract.toUpperCase().includes('INTRODUCCION'),
+        formattingScore,
+        formattingReport,
+        onProgress: (msg) => setSubmitProgress(msg)
+      });
+
+      if (res.success && res.article) {
+        onAddArticle(res.article);
+        resetForm();
+        alert('¡Excelente! Su manuscrito ha sido subido a Supabase Storage y registrado exitosamente en el sistema Scientia Dentis (COLP) con estado "Recibido - Esperando Editor".');
+      } else {
+        alert(res.error || 'Ocurrió un error al enviar el manuscrito a Supabase.');
       }
-    };
-
-    onAddArticle(newArticle);
-    setIsSubmitting(false);
-    resetForm();
-    alert('¡Excelente! Su artículo ha sido cargado exitosamente en el sistema Scientia Dentis (Órgano Oficial del Colegio de Odontólogos de La Paz) con sus autores ordenados, roles asignados, archivos de figuras en alta resolución (≥300 DPI), anexos éticos y declaración de IA.');
+    } catch (err: any) {
+      alert('Error en el envío: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+      setSubmitProgress('');
+    }
   };
 
   const resetForm = () => {

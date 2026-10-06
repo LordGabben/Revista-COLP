@@ -22,6 +22,13 @@ import {
   logoutUser,
   supabase
 } from './lib/supabase';
+import { getVolumes, getCurrentVolume } from './services/volumesService';
+import { 
+  getPublishedArticles, 
+  getAllArticlesForEditor, 
+  publishArticleToVolume, 
+  updateArticleStatus 
+} from './services/articlesService';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -142,29 +149,46 @@ export default function App() {
       setArticles(initialArticlesList);
       setVolumes(initialVolumesList);
 
-      // Asynchronous remote sync if Supabase is reachable
-      if (isSupabaseConfigured) {
-        try {
-          const [remoteVolumes, remoteArticles] = await Promise.all([
-            fetchVolumes(),
-            fetchArticles()
-          ]);
-          if (remoteVolumes && remoteVolumes.length > 0) {
-            setVolumes(remoteVolumes);
-            localStorage.setItem('oj_volumes', JSON.stringify(remoteVolumes));
-          }
-          if (remoteArticles && remoteArticles.length > 0) {
-            setArticles(remoteArticles);
-            localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
-          }
-        } catch (err) {
-          console.warn('Supabase remote sync fallback:', err);
+      // Asynchronous remote sync using Supabase services
+      try {
+        const [remoteVolumes, remoteArticles] = await Promise.all([
+          getVolumes(),
+          getAllArticlesForEditor()
+        ]);
+        if (remoteVolumes && remoteVolumes.length > 0) {
+          setVolumes(remoteVolumes);
+          localStorage.setItem('oj_volumes', JSON.stringify(remoteVolumes));
         }
+        if (remoteArticles && remoteArticles.length > 0) {
+          setArticles(remoteArticles);
+          localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
+        }
+      } catch (err) {
+        console.warn('Supabase remote sync fallback:', err);
       }
     }
 
     loadData();
   }, []);
+
+  const handleRefreshArticles = async () => {
+    try {
+      const [remoteVolumes, remoteArticles] = await Promise.all([
+        getVolumes(),
+        getAllArticlesForEditor()
+      ]);
+      if (remoteVolumes && remoteVolumes.length > 0) {
+        setVolumes(remoteVolumes);
+        localStorage.setItem('oj_volumes', JSON.stringify(remoteVolumes));
+      }
+      if (remoteArticles && remoteArticles.length > 0) {
+        setArticles(remoteArticles);
+        localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
+      }
+    } catch (err) {
+      console.warn('Error refrescando desde Supabase:', err);
+    }
+  };
 
   // Keyboard shortcut Ctrl+K / Cmd+K to jump to search input
   useEffect(() => {
@@ -279,15 +303,8 @@ export default function App() {
     const updated = [newArticle, ...articles.filter(a => a.id !== newArticle.id)];
     saveState(updated);
 
-    // 2. Fetch fresh articles from Supabase in background
-    if (isSupabaseConfigured) {
-      fetchArticles().then(remoteArticles => {
-        if (remoteArticles && remoteArticles.length > 0) {
-          setArticles(remoteArticles);
-          localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
-        }
-      }).catch(err => console.warn('Supabase remote sync:', err));
-    }
+    // 2. Refresh volumes and articles from Supabase in background
+    handleRefreshArticles();
   };
 
   // Smooth scroll helper
@@ -488,6 +505,7 @@ export default function App() {
               onUpdateArticle={handleUpdateArticle} 
               onPublishArticle={handlePublishArticle} 
               onDirectPublishSuccess={handleDirectPublish}
+              onRefreshArticles={handleRefreshArticles}
             />
           </div>
         )}

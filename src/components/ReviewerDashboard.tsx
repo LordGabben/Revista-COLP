@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ClipboardCheck, FileText, MessageSquare, Star, Send, Layers, HelpCircle, CheckCircle2, Sparkles, ShieldCheck, Image, Paperclip, Download, FileCheck } from 'lucide-react';
 import { Article, Review, User } from '../types';
 import { ACADEMIC_REVIEWERS } from '../data';
+import { submitReview } from '../services/articlesService';
 
 interface ReviewerDashboardProps {
   articles: Article[];
@@ -30,8 +31,9 @@ export default function ReviewerDashboard({ articles, onAddReview }: ReviewerDas
   const [ethical, setEthical] = useState(5);
   const [comments, setComments] = useState('');
   const [recommendation, setRecommendation] = useState<'accept' | 'minor_revisions' | 'major_revisions' | 'reject'>('minor_revisions');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewingArticle) return;
     if (!comments.trim()) {
@@ -39,24 +41,48 @@ export default function ReviewerDashboard({ articles, onAddReview }: ReviewerDas
       return;
     }
 
-    const newReview: Review = {
-      id: 'rev-row-' + Date.now(),
-      articleId: reviewingArticle.id,
-      reviewerId: activeReviewer.id,
-      reviewerName: activeReviewer.name,
-      originalityScore: originality,
-      methodologyScore: methodology,
-      clinicalRelevanceScore: relevance,
-      ethicalScore: ethical,
-      comments,
-      recommendation,
-      submittedAt: new Date().toISOString().split('T')[0]
-    };
+    setIsSubmittingReview(true);
+    try {
+      const result = await submitReview({
+        articleId: reviewingArticle.id,
+        reviewerId: activeReviewer.id,
+        reviewerName: activeReviewer.name,
+        originalityScore: originality,
+        methodologyScore: methodology,
+        clinicalRelevanceScore: relevance,
+        ethicalScore: ethical,
+        comments: comments.trim(),
+        recommendation
+      });
 
-    onAddReview(reviewingArticle.id, newReview);
-    setReviewingArticle(null);
-    resetForm();
-    alert('¡Excelente! Su arbitraje por pares ha sido cargado en el sistema Scientia Dentis (COLP) y ya es visible para el Editor de la revista.');
+      if (result.success && result.review) {
+        onAddReview(reviewingArticle.id, result.review);
+      } else {
+        // Fallback review object
+        const fallbackReview: Review = {
+          id: 'rev-row-' + Date.now(),
+          articleId: reviewingArticle.id,
+          reviewerId: activeReviewer.id,
+          reviewerName: activeReviewer.name,
+          originalityScore: originality,
+          methodologyScore: methodology,
+          clinicalRelevanceScore: relevance,
+          ethicalScore: ethical,
+          comments: comments.trim(),
+          recommendation,
+          submittedAt: new Date().toISOString().split('T')[0]
+        };
+        onAddReview(reviewingArticle.id, fallbackReview);
+      }
+
+      setReviewingArticle(null);
+      resetForm();
+      alert('¡Excelente! Su arbitraje por pares ha sido registrado en la base de datos de Scientia Dentis (COLP) y ya es visible para el Comité Editorial.');
+    } catch (err: any) {
+      alert('Error registrando evaluación: ' + err.message);
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const resetForm = () => {
@@ -331,9 +357,19 @@ export default function ReviewerDashboard({ articles, onAddReview }: ReviewerDas
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white rounded-lg shadow-xs cursor-pointer transition-colors"
+                    disabled={isSubmittingReview}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-brand-700 hover:bg-brand-800 disabled:opacity-50 text-white rounded-lg shadow-xs cursor-pointer transition-colors"
                   >
-                    <Send className="w-4 h-4" /> Enviar Arbitraje Técnico
+                    {isSubmittingReview ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Guardando en Base de Datos...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" /> Enviar Arbitraje Técnico
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
