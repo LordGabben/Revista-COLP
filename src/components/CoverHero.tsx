@@ -16,6 +16,7 @@ import {
   Archive
 } from 'lucide-react';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
+import ColpLogo from './ColpLogo';
 import dentalHeroImg from '../assets/images/dental_research_hero_1790466211700.jpg';
 import { resolveVolumeCover } from '../lib/supabase';
 
@@ -100,7 +101,7 @@ export default function CoverHero({
 
       const element = document.createElement("a");
       const file = new Blob([
-        `Scientia Dentis "Revista Científica"\nÓrgano Oficial del Colegio de Odontólogos de La Paz (COLP)\n\n${currentVolume.title}\ne-ISSN: 2448-8976\nFecha de Edición: ${currentVolume.publishedAt}\n\nSumario de Artículos Arbitrados y Evaluados por Pares a Doble Ciego.`
+        `Scientia Dentis "Revista Científica"\nÓrgano Oficial del Colegio de Odontólogos de La Paz (COLP)\n\n${currentVolume.title}\nFecha de Edición: ${currentVolume.publishedAt}\n\nSumario de Artículos Arbitrados y Evaluados por Pares a Doble Ciego.`
       ], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
       element.download = `Scientia_Dentis_Vol${currentVolume.volumeNumber}_Num${currentVolume.issueNumber}_Edicion_Completa.pdf`;
@@ -122,7 +123,7 @@ export default function CoverHero({
 
       const element = document.createElement("a");
       const file = new Blob([
-        `Scientia Dentis "Revista Científica"\nÓrgano Oficial del Colegio de Odontólogos de La Paz (COLP)\n\n${vol.title}\ne-ISSN: 2448-8976\nAño: ${vol.year}\n\nFascículo Histórico de Investigación Estomatológica.`
+        `Scientia Dentis "Revista Científica"\nÓrgano Oficial del Colegio de Odontólogos de La Paz (COLP)\n\n${vol.title}\nAño: ${vol.year}\n\nFascículo Histórico de Investigación Estomatológica.`
       ], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
       element.download = vol.pdfUrl || `Scientia_Dentis_Vol${vol.volumeNumber}_Num${vol.issueNumber}.pdf`;
@@ -164,21 +165,20 @@ export default function CoverHero({
 
       {/* Top Glass Ribbon Bar */}
       <div className="relative border-b border-white/10 px-6 sm:px-10 py-3.5 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-3 backdrop-blur-xl bg-slate-950/60">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full overflow-hidden bg-[#e9e5db] border border-cyan-400/40 p-0.5 shrink-0 flex items-center justify-center shadow-xs">
-            <img 
-              src={logoImg} 
-              alt="COLP Logo" 
-              className="w-full h-full object-contain mix-blend-multiply" 
-              referrerPolicy="no-referrer"
-            />
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-white tracking-wide">Colegio de Odontólogos de La Paz</span>
-            <span className="text-slate-500" aria-hidden="true">·</span>
-            <span className="font-mono text-cyan-400 font-semibold">{JOURNAL_INFO.issn}</span>
-            <span className="text-slate-500 hidden sm:inline" aria-hidden="true">·</span>
-            <span className="text-slate-400 hidden sm:inline">Arbitraje por Pares Doble Ciego</span>
+        <div className="flex items-center gap-3.5">
+          <ColpLogo 
+            className="w-12 h-12 sm:w-14 sm:h-14" 
+            allowUpload={true} 
+            alt="Colegio de Odontólogos de La Paz" 
+          />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+            <span className="font-semibold text-white tracking-wide text-xs sm:text-sm">Colegio de Odontólogos de La Paz</span>
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400">
+              <span className="text-slate-500 hidden sm:inline" aria-hidden="true">·</span>
+              <span>La Paz, Bolivia</span>
+              <span className="text-slate-500 hidden sm:inline" aria-hidden="true">·</span>
+              <span className="hidden sm:inline">Arbitraje por Pares Doble Ciego</span>
+            </div>
           </div>
         </div>
 

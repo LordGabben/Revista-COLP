@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
-import { Shield, Users, FileText, ClipboardCheck, ArrowRight, CheckCircle2, AlertTriangle, AlertCircle, Sparkles, Plus, BookOpen, Layers, Send, ShieldCheck, Image, Paperclip, Download, FileCheck } from 'lucide-react';
+import { Shield, Users, FileText, ClipboardCheck, ArrowRight, CheckCircle2, AlertTriangle, AlertCircle, Sparkles, Plus, BookOpen, Layers, Send, ShieldCheck, Image, Paperclip, Download, FileCheck, Zap, Rocket } from 'lucide-react';
 import { Article, ArticleStatus, Review, User, Volume } from '../types';
 import { ACADEMIC_REVIEWERS } from '../data';
+import DirectPublishModal from './DirectPublishModal';
 
 interface EditorDashboardProps {
   articles: Article[];
   volumes: Volume[];
   onUpdateArticle: (article: Article) => void;
   onPublishArticle: (articleId: string, volumeId: string, doi: string) => void;
+  onDirectPublishSuccess?: (newArticle: Article) => void;
 }
 
-export default function EditorDashboard({ articles, volumes, onUpdateArticle, onPublishArticle }: EditorDashboardProps) {
+export default function EditorDashboard({ 
+  articles, 
+  volumes, 
+  onUpdateArticle, 
+  onPublishArticle,
+  onDirectPublishSuccess 
+}: EditorDashboardProps) {
   const [activeTab, setActiveTab] = useState<'submitted' | 'under_review' | 'accepted' | 'published'>('submitted');
   const [assigningReviewersToId, setAssigningReviewersToId] = useState<string | null>(null);
   const [viewingArticleReviewsId, setViewingArticleReviewsId] = useState<string | null>(null);
   const [publishingArticleId, setPublishingArticleId] = useState<string | null>(null);
+  const [isDirectPublishModalOpen, setIsDirectPublishModalOpen] = useState(false);
 
   // Form decisions
   const [editorDecisionNotes, setEditorDecisionNotes] = useState('');
@@ -113,6 +122,15 @@ export default function EditorDashboard({ articles, volumes, onUpdateArticle, on
           <h2 className="font-serif text-2xl font-bold text-slate-900">Panel del Comité Editorial</h2>
           <p className="text-xs text-slate-500">Supervise, arbitre, y publique artículos científicos para {volumes.find(v => v.isCurrent)?.title.split(':')[0]}.</p>
         </div>
+
+        {/* PROMINENT DIRECT PUBLISHING BUTTON */}
+        <button
+          onClick={() => setIsDirectPublishModalOpen(true)}
+          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-teal-600 to-cyan-600 hover:from-amber-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-amber-950/30 border border-amber-400/40 flex items-center gap-2 transition-all cursor-pointer active:scale-95 shrink-0"
+        >
+          <Zap className="w-4 h-4 text-amber-200 fill-amber-300" />
+          <span>Publicar Artículo Directo (Lanzamiento)</span>
+        </button>
       </div>
 
       {/* Editor Stats Cards */}
@@ -164,20 +182,27 @@ export default function EditorDashboard({ articles, volumes, onUpdateArticle, on
           { tab: 'submitted', label: `Nuevos Envíos (${submittedArticles.length})` },
           { tab: 'under_review', label: `En Evaluación (${reviewingArticles.length})` },
           { tab: 'accepted', label: `Aceptados / Listos (${acceptedArticles.length})` },
-          { tab: 'published', label: `Publicados en Volúmenes (${publishedArticles.length})` }
+          { tab: 'published', label: `Publicados en Volúmenes (${publishedArticles.length})` },
+          { tab: 'direct_publish', label: '⚡ Lanzamiento Rápido' }
         ].map((t) => (
           <button
             key={t.tab}
             onClick={() => {
-              setActiveTab(t.tab as any);
-              setAssigningReviewersToId(null);
-              setViewingArticleReviewsId(null);
-              setPublishingArticleId(null);
+              if (t.tab === 'direct_publish') {
+                setIsDirectPublishModalOpen(true);
+              } else {
+                setActiveTab(t.tab as any);
+                setAssigningReviewersToId(null);
+                setViewingArticleReviewsId(null);
+                setPublishingArticleId(null);
+              }
             }}
             className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === t.tab
                 ? 'bg-brand-600 text-white shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                : t.tab === 'direct_publish'
+                  ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 font-extrabold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             {t.label}
@@ -627,6 +652,20 @@ export default function EditorDashboard({ articles, volumes, onUpdateArticle, on
         )}
 
       </div>
+
+      {/* MODAL: DIRECT PUBLISHING (LAUNCH FLOW) */}
+      <DirectPublishModal
+        isOpen={isDirectPublishModalOpen}
+        onClose={() => setIsDirectPublishModalOpen(false)}
+        volumes={volumes}
+        defaultVolumeId={volumes.find(v => v.isCurrent)?.id || 'v12n2'}
+        onPublishSuccess={(newArticle) => {
+          if (onDirectPublishSuccess) {
+            onDirectPublishSuccess(newArticle);
+          }
+          setActiveTab('published');
+        }}
+      />
     </div>
   );
 }

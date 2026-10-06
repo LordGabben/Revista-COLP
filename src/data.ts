@@ -18,7 +18,6 @@ export {
 export const JOURNAL_INFO: JournalConfig = {
   name: 'Scientia Dentis "Revista Científica"',
   shortName: "Scientia Dentis",
-  issn: "e-ISSN: 2448-8976",
   description: "Scientia Dentis 'Revista Científica' es el Órgano Oficial de difusión científica y académica del Colegio de Odontólogos de La Paz (COLP). Publicación arbitrada por pares doble ciego dedicada a investigaciones estomatológicas originales, avances clínicos y biomateriales.",
   institution: "Colegio de Odontólogos de La Paz (COLP)",
   editorInChief: "Dra. Beatriz Villalobos, PhD"

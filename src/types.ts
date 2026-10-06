@@ -104,6 +104,7 @@ export interface Article {
     name: string;
     size: string;
     format?: string; // 'docx' | 'pdf' | 'odt'
+    url?: string;
   };
   figures?: ArticleFile[];
   supplementaryFiles?: ArticleFile[];
@@ -111,6 +112,8 @@ export interface Article {
   reviews: Review[];
   editorNotes?: string;
   publishedInVolumeId?: string;
+  publishedAt?: string;
+  pdfUrl?: string;
   doi?: string;
   references: string[];
   wordCount: number;
@@ -137,7 +140,7 @@ export interface Volume {
 export interface JournalConfig {
   name: string;
   shortName: string;
-  issn: string;
+  issn?: string;
   description: string;
   institution: string;
   editorInChief: string;

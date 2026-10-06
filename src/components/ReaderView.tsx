@@ -380,6 +380,21 @@ export default function ReaderView({
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {/* Direct PDF Link if available */}
+                        {(art.pdfUrl || art.manuscriptFile?.url) && (
+                          <a
+                            href={art.pdfUrl || art.manuscriptFile?.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-400/30 text-xs font-mono text-teal-300 transition-colors flex items-center gap-1"
+                            title="Abrir o descargar PDF oficial maquetado"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Download className="w-3.5 h-3.5 text-teal-400" />
+                            <span>PDF</span>
+                          </a>
+                        )}
+
                         {/* Toggle Quick Abstract Button */}
                         <button
                           onClick={(e) => toggleQuickAbstract(art.id, e)}
@@ -735,7 +750,14 @@ export default function ReaderView({
                       </div>
                     </div>
                     <button 
-                      onClick={() => alert(`Simulando la descarga de ${selectedArticle.manuscriptFile.name} (${selectedArticle.manuscriptFile.size}). Archivo listo.`)}
+                      onClick={() => {
+                        const targetUrl = selectedArticle.pdfUrl || selectedArticle.manuscriptFile?.url;
+                        if (targetUrl) {
+                          window.open(targetUrl, '_blank');
+                        } else {
+                          alert(`Descargando ${selectedArticle.manuscriptFile.name} (${selectedArticle.manuscriptFile.size}). Archivo listo.`);
+                        }
+                      }}
                       className="flex items-center gap-1.5 px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white rounded-lg font-bold shadow-xs cursor-pointer whitespace-nowrap transition-colors"
                     >
                       <Download className="w-4 h-4" /> Descargar PDF ({selectedArticle.manuscriptFile.size})

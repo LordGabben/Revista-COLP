@@ -273,6 +273,23 @@ export default function App() {
     }
   };
 
+  // Direct fast publication handler (Launch Flow)
+  const handleDirectPublish = (newArticle: Article) => {
+    // 1. Immediately update local state to reflect in ReaderView and CoverHero
+    const updated = [newArticle, ...articles.filter(a => a.id !== newArticle.id)];
+    saveState(updated);
+
+    // 2. Fetch fresh articles from Supabase in background
+    if (isSupabaseConfigured) {
+      fetchArticles().then(remoteArticles => {
+        if (remoteArticles && remoteArticles.length > 0) {
+          setArticles(remoteArticles);
+          localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
+        }
+      }).catch(err => console.warn('Supabase remote sync:', err));
+    }
+  };
+
   // Smooth scroll helper
   const scrollToCatalog = () => {
     setTimeout(() => {
@@ -470,6 +487,7 @@ export default function App() {
               volumes={volumes} 
               onUpdateArticle={handleUpdateArticle} 
               onPublishArticle={handlePublishArticle} 
+              onDirectPublishSuccess={handleDirectPublish}
             />
           </div>
         )}
@@ -486,10 +504,12 @@ export default function App() {
                 affiliation: 'Colegio de Odontólogos de La Paz (COLP)'
               }}
               articles={articles}
+              volumes={volumes}
               onSwitchPerspective={setCurrentRole}
               editorialBoard={editorialBoard}
               onUpdateEditorialBoard={handleUpdateEditorialBoard}
               onOpenEditorialModal={() => setActiveModal('about')}
+              onDirectPublishSuccess={handleDirectPublish}
             />
           </div>
         )}

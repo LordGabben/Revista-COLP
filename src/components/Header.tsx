@@ -144,7 +144,7 @@ export default function Header({
               <p className="text-[10px] sm:text-[11px] text-slate-400 font-sans tracking-wide flex items-center gap-1.5">
                 <span>Órgano Oficial COLP</span>
                 <span className="text-slate-600" aria-hidden="true">·</span>
-                <span className="font-mono text-cyan-400/90 text-[10px] hidden sm:inline">{journalInfo.issn}</span>
+                <span className="text-slate-400 text-[10px] hidden sm:inline">La Paz, Bolivia</span>
               </p>
             </div>
           </div>

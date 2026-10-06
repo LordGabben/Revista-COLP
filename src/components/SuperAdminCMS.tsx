@@ -28,9 +28,10 @@ import {
   Globe2,
   X,
   Crown,
-  RotateCcw
+  RotateCcw,
+  Zap
 } from 'lucide-react';
-import { AuthUser, UserRole, Article, EditorialMember } from '../types';
+import { AuthUser, UserRole, Article, EditorialMember, Volume } from '../types';
 import { 
   fetchAllProfiles, 
   updateUserRole, 
@@ -38,26 +39,32 @@ import {
   deleteUserProfile 
 } from '../lib/supabase';
 import { EDITORIAL_BOARD_MEMBERS } from '../data';
+import DirectPublishModal from './DirectPublishModal';
 
 interface SuperAdminCMSProps {
   currentUser: AuthUser;
   articles: Article[];
+  volumes?: Volume[];
   onSwitchPerspective: (role: UserRole) => void;
   editorialBoard: EditorialMember[];
   onUpdateEditorialBoard: (updated: EditorialMember[]) => void;
   onOpenEditorialModal?: () => void;
+  onDirectPublishSuccess?: (newArticle: Article) => void;
 }
 
 export default function SuperAdminCMS({
   currentUser,
   articles,
+  volumes = [],
   onSwitchPerspective,
   editorialBoard,
   onUpdateEditorialBoard,
-  onOpenEditorialModal
+  onOpenEditorialModal,
+  onDirectPublishSuccess
 }: SuperAdminCMSProps) {
   // Navigation Tabs inside CMS
   const [activeTab, setActiveTab] = useState<'users' | 'editorial_board' | 'audit'>('users');
+  const [isDirectPublishModalOpen, setIsDirectPublishModalOpen] = useState(false);
 
   // User Management State
   const [profiles, setProfiles] = useState<AuthUser[]>([]);
@@ -361,7 +368,16 @@ export default function SuperAdminCMS({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <button
+              onClick={() => setIsDirectPublishModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 via-teal-600 to-cyan-600 hover:from-amber-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-amber-950/40 border border-amber-400/40 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+              title="Publicar artículo de lanzamiento directamente en la edición activa"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-200 fill-amber-300" />
+              <span>Lanzamiento Rápido PDF</span>
+            </button>
+
             <button
               onClick={loadUsers}
               disabled={loading}
@@ -1159,6 +1175,20 @@ export default function SuperAdminCMS({
           </div>
         </div>
       )}
+
+      {/* DIRECT PUBLISH MODAL FOR SUPERADMIN */}
+      <DirectPublishModal
+        isOpen={isDirectPublishModalOpen}
+        onClose={() => setIsDirectPublishModalOpen(false)}
+        volumes={volumes}
+        defaultVolumeId={volumes.find(v => v.isCurrent)?.id || 'v12n2'}
+        onPublishSuccess={(newArticle) => {
+          if (onDirectPublishSuccess) {
+            onDirectPublishSuccess(newArticle);
+          }
+          showNotification(`Artículo "${newArticle.title}" publicado con éxito en la edición actual.`);
+        }}
+      />
 
     </div>
   );

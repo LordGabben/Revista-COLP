@@ -40,7 +40,7 @@ export default function InstitutionalModals({
             </div>
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-semibold">
-                Colegio de Odontólogos de La Paz · {JOURNAL_INFO.issn}
+                Colegio de Odontólogos de La Paz · Revista Científica Arbitrada
               </p>
               <h3 className="font-serif text-lg font-bold text-white leading-tight">
                 {activeModal === 'privacy' && 'Política de Privacidad y Protección de Datos'}

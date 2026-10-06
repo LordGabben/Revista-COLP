@@ -3,6 +3,7 @@ import { BookOpen, MapPin, Mail, Phone, ExternalLink, ShieldCheck, Scale, FileTe
 import { JournalConfig, InstitutionalModalType } from '../types';
 import { INDEXING_SYSTEMS } from '../data';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
+import ColpLogo from './ColpLogo';
 
 interface FooterProps {
   journalInfo: JournalConfig;
@@ -75,7 +76,7 @@ export default function Footer({ journalInfo, onOpenModal, onResetDemo }: Footer
 
             <div className="flex flex-wrap gap-2 pt-1 font-mono text-[10px]">
               <span className="px-2.5 py-1 bg-slate-900 text-cyan-300 border border-slate-800 rounded">
-                {journalInfo.issn}
+                Órgano Oficial COLP
               </span>
               <span className="px-2.5 py-1 bg-slate-900 text-emerald-300 border border-slate-800 rounded">
                 Open Access CC BY 4.0
@@ -160,9 +161,16 @@ export default function Footer({ journalInfo, onOpenModal, onResetDemo }: Footer
 
           {/* Col 4: Sede & Contacto COLP (lg:col-span-3) */}
           <div className="lg:col-span-3 space-y-3">
-            <h5 className="font-serif font-bold text-sm text-white border-b border-slate-800 pb-2">
-              Colegio de Odontólogos de La Paz
-            </h5>
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-2">
+              <ColpLogo 
+                className="w-10 h-10" 
+                allowUpload={true} 
+                alt="Colegio de Odontólogos de La Paz" 
+              />
+              <h5 className="font-serif font-bold text-sm text-white">
+                Colegio de Odontólogos de La Paz
+              </h5>
+            </div>
             <div className="space-y-2.5 text-xs text-slate-400">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
