@@ -9,6 +9,7 @@ import SuperAdminCMS from './components/SuperAdminCMS';
 import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
 import InstitutionalModals from './components/InstitutionalModals';
+import PartnersView from './components/PartnersView';
 
 import { JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS, INITIAL_VOLUMES, INITIAL_ARTICLES } from './data';
 import { Article, Review, UserRole, Volume, InstitutionalModalType, AuthUser, EditorialMember } from './types';
@@ -31,10 +32,12 @@ import {
   publishArticleToVolume, 
   updateArticleStatus 
 } from './services/articlesService';
+import { getEditorialBoard, DEFAULT_EDITORIAL_BOARD } from './services/editorialService';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole>('reader');
+  const [currentView, setCurrentView] = useState<'home' | 'partners'>('home');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -47,33 +50,21 @@ export default function App() {
   const [supabaseAlert, setSupabaseAlert] = useState<{ type: 'error' | 'success'; message: string; details?: string } | null>(null);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
-  // Editable Editorial Board & Scientific Council
-  const [editorialBoard, setEditorialBoard] = useState<EditorialMember[]>(() => {
-    const stored = localStorage.getItem('oj_editorial_board');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.warn('Error parseando editorial board local');
-      }
-    }
-    return EDITORIAL_BOARD_MEMBERS.map((m, idx) => ({
-      id: 'colp_ed_' + idx,
-      name: m.name,
-      role: m.role,
-      institution: m.institution,
-      country: m.country,
-      specialty: m.specialty,
-      category: (m.role.toLowerCase().includes('asesor') ? 'advisory' : 'editorial') as 'editorial' | 'advisory'
-    }));
-  });
+  // Editable Editorial Board & Scientific Council directly from Supabase (Zero LocalStorage)
+  const [editorialBoard, setEditorialBoard] = useState<EditorialMember[]>(DEFAULT_EDITORIAL_BOARD);
 
   const handleUpdateEditorialBoard = (updated: EditorialMember[]) => {
     setEditorialBoard(updated);
+  };
+
+  const handleRefreshEditorialBoard = async () => {
     try {
-      localStorage.setItem('oj_editorial_board', JSON.stringify(updated));
+      const remoteEditorial = await getEditorialBoard();
+      if (remoteEditorial && remoteEditorial.length > 0) {
+        setEditorialBoard(remoteEditorial);
+      }
     } catch (e) {
-      console.error('Error guardando editorial board:', e);
+      console.warn('[App] Error refrescando consejo editorial desde Supabase:', e);
     }
   };
 
@@ -134,15 +125,19 @@ export default function App() {
           throw new Error('Faltan credenciales de Supabase en variables de entorno (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY). Por favor configure su archivo .env.');
         }
 
-        const [remoteVolumes, remoteArticles] = await Promise.all([
+        const [remoteVolumes, remoteArticles, remoteEditorial] = await Promise.all([
           getVolumes(),
-          getAllArticlesForEditor()
+          getAllArticlesForEditor(),
+          getEditorialBoard()
         ]);
         setVolumes(remoteVolumes);
         setArticles(remoteArticles);
+        if (remoteEditorial && remoteEditorial.length > 0) {
+          setEditorialBoard(remoteEditorial);
+        }
         setSupabaseAlert({
           type: 'success',
-          message: `Conexión en tiempo real con Supabase verificada: ${remoteVolumes.length} volúmenes y ${remoteArticles.length} artículos cargados.`
+          message: `Conexión en tiempo real con Supabase verificada: ${remoteVolumes.length} volúmenes, ${remoteArticles.length} artículos y ${remoteEditorial.length} miembros del comité cargados.`
         });
       } catch (err: any) {
         console.error('Error al consultar Supabase en loadData:', err);
@@ -165,15 +160,19 @@ export default function App() {
         throw new Error('Faltan credenciales de Supabase en variables de entorno (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).');
       }
 
-      const [remoteVolumes, remoteArticles] = await Promise.all([
+      const [remoteVolumes, remoteArticles, remoteEditorial] = await Promise.all([
         getVolumes(),
-        getAllArticlesForEditor()
+        getAllArticlesForEditor(),
+        getEditorialBoard()
       ]);
       setVolumes(remoteVolumes);
       setArticles(remoteArticles);
+      if (remoteEditorial && remoteEditorial.length > 0) {
+        setEditorialBoard(remoteEditorial);
+      }
       setSupabaseAlert({
         type: 'success',
-        message: `Sincronización completada con Supabase (${remoteArticles.length} artículos).`
+        message: `Sincronización completada con Supabase (${remoteArticles.length} artículos, ${remoteEditorial.length} miembros).`
       });
     } catch (err: any) {
       console.error('Error al sincronizar con Supabase:', err);
@@ -182,6 +181,36 @@ export default function App() {
         message: 'Error al sincronizar con Supabase',
         details: err.message || String(err)
       });
+    }
+  };
+
+  // Reactive Volume mutations & refresh handlers
+  const handleUpdateVolumeSuccess = (updatedVolume: Volume) => {
+    setVolumes(prev => {
+      if (updatedVolume.isCurrent) {
+        return prev.map(v => v.id === updatedVolume.id ? updatedVolume : { ...v, isCurrent: false });
+      }
+      return prev.map(v => v.id === updatedVolume.id ? updatedVolume : v);
+    });
+  };
+
+  const handleCreateVolumeSuccess = (newVolume: Volume) => {
+    setVolumes(prev => {
+      if (newVolume.isCurrent) {
+        return [newVolume, ...prev.map(v => ({ ...v, isCurrent: false }))];
+      }
+      return [newVolume, ...prev];
+    });
+  };
+
+  const handleRefreshVolumes = async () => {
+    try {
+      const remote = await getVolumes();
+      setVolumes(remote);
+      return remote;
+    } catch (e) {
+      console.error('Error refrescando volúmenes:', e);
+      throw e;
     }
   };
 
@@ -359,6 +388,7 @@ export default function App() {
   };
 
   const handleNavigateCurrentIssue = () => {
+    setCurrentView('home');
     if (currentRole !== 'reader') {
       setCurrentRole('reader');
     }
@@ -367,6 +397,7 @@ export default function App() {
   };
 
   const handleNavigateArchive = () => {
+    setCurrentView('home');
     if (currentRole !== 'reader') {
       setCurrentRole('reader');
     }
@@ -375,6 +406,7 @@ export default function App() {
   };
 
   const handleSelectVolume = (volumeId: string) => {
+    setCurrentView('home');
     if (currentRole !== 'reader') {
       setCurrentRole('reader');
     }
@@ -384,6 +416,7 @@ export default function App() {
   };
 
   const handleSelectFeaturedArticle = (article: Article) => {
+    setCurrentView('home');
     if (currentRole !== 'reader') {
       setCurrentRole('reader');
     }
@@ -420,14 +453,19 @@ export default function App() {
           journalInfo={JOURNAL_INFO}
           onOpenModal={setActiveModal}
           onNavigateHome={() => {
+            setCurrentView('home');
             setCurrentRole('reader');
             setSelectedArticleForReader(null);
             setSelectedVolumeFilter(null);
           }}
           onNavigateCurrentIssue={handleNavigateCurrentIssue}
           onNavigateArchive={handleNavigateArchive}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onNavigatePartners={() => {
+            setCurrentView('partners');
+            setCurrentRole('reader');
+            setSelectedArticleForReader(null);
+          }}
+          currentView={currentView}
           currentUser={currentUser}
           onOpenAuthModal={handleOpenAuthModal}
           onLogout={handleLogout}
@@ -436,101 +474,59 @@ export default function App() {
 
       {/* Main Content Workspace */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full space-y-6">
-        
-        {/* Real-time Supabase Connection & Error Status Banner */}
-        {supabaseAlert && (
-          <div 
-            className={`fade-in rounded-2xl p-4 sm:p-5 border flex items-start justify-between gap-4 shadow-xl backdrop-blur-xl ${
-              supabaseAlert.type === 'error'
-                ? 'bg-rose-950/80 border-rose-500/60 text-rose-200 shadow-rose-950/50'
-                : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200 shadow-emerald-950/40'
-            }`}
-            role="alert"
-          >
-            <div className="flex items-start gap-3">
-              {supabaseAlert.type === 'error' ? (
-                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-              ) : (
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              )}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono tracking-wider font-bold px-2 py-0.5 rounded-full bg-black/40 border border-white/10">
-                    {supabaseAlert.type === 'error' ? 'Alerta Supabase en Vivo' : 'Conexión Supabase Activa'}
-                  </span>
-                  <span className="text-xs font-semibold">{supabaseAlert.message}</span>
-                </div>
-                {supabaseAlert.details && (
-                  <p className="text-xs font-mono opacity-90 break-all bg-black/30 p-2 rounded-lg border border-white/5">
-                    {supabaseAlert.details}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleRefreshArticles}
-                className="px-3 py-1.5 text-xs font-mono font-bold rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center gap-1.5 cursor-pointer text-white"
-                title="Reintentar consulta en Supabase"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Reintentar</span>
-              </button>
-              <button
-                onClick={() => setSupabaseAlert(null)}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white cursor-pointer"
-                aria-label="Cerrar alerta"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* PUBLIC READER PORTAL */}
         {currentRole === 'reader' && (
           <>
-            {/* Landing Hero "Telón Editorial" */}
-            <CoverHero 
-              currentVolume={currentVolume}
-              previousVolumes={volumes.filter(v => !v.isCurrent)}
-              featuredArticles={publishedArticles}
-              onExploreCatalog={() => {
-                setSelectedVolumeFilter(null);
-                scrollToCatalog();
-              }}
-              onSelectArticle={handleSelectFeaturedArticle}
-              onOpenModal={setActiveModal}
-              onChangeRole={(role) => {
-                if (role === 'author' && !currentUser) {
-                  handleOpenAuthModal('register');
-                } else {
-                  setCurrentRole(role);
-                }
-              }}
-              onSelectVolume={handleSelectVolume}
-            />
+            {currentView === 'partners' ? (
+              <PartnersView 
+                onNavigateHome={() => setCurrentView('home')}
+                onNavigateCurrentIssue={handleNavigateCurrentIssue}
+              />
+            ) : (
+              <>
+                {/* Landing Hero "Telón Editorial" */}
+                <CoverHero 
+                  currentVolume={currentVolume}
+                  previousVolumes={volumes.filter(v => !v.isCurrent)}
+                  featuredArticles={publishedArticles}
+                  onExploreCatalog={() => {
+                    setSelectedVolumeFilter(null);
+                    scrollToCatalog();
+                  }}
+                  onSelectArticle={handleSelectFeaturedArticle}
+                  onOpenModal={setActiveModal}
+                  onChangeRole={(role) => {
+                    if (role === 'author' && !currentUser) {
+                      handleOpenAuthModal('register');
+                    } else {
+                      setCurrentRole(role);
+                    }
+                  }}
+                  onSelectVolume={handleSelectVolume}
+                />
 
-            {/* Reader View & Catalog */}
-            <ReaderView 
-              articles={articles} 
-              volumes={volumes}
-              externalSelectedArticle={selectedArticleForReader}
-              onCloseExternalArticle={() => setSelectedArticleForReader(null)}
-              externalSearchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onOpenInstitutionalModal={setActiveModal}
-              onNavigateToAuthor={() => {
-                if (!currentUser) {
-                  handleOpenAuthModal('register');
-                } else {
-                  setCurrentRole('author');
-                }
-              }}
-              externalSelectedVolumeId={selectedVolumeFilter}
-              onClearVolumeFilter={() => setSelectedVolumeFilter(null)}
-            />
+                {/* Reader View & Catalog */}
+                <ReaderView 
+                  articles={articles} 
+                  volumes={volumes}
+                  externalSelectedArticle={selectedArticleForReader}
+                  onCloseExternalArticle={() => setSelectedArticleForReader(null)}
+                  externalSearchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  onOpenInstitutionalModal={setActiveModal}
+                  onNavigateToAuthor={() => {
+                    if (!currentUser) {
+                      handleOpenAuthModal('register');
+                    } else {
+                      setCurrentRole('author');
+                    }
+                  }}
+                  externalSelectedVolumeId={selectedVolumeFilter}
+                  onClearVolumeFilter={() => setSelectedVolumeFilter(null)}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -579,6 +575,7 @@ export default function App() {
               onPublishArticle={handlePublishArticle} 
               onDirectPublishSuccess={handleDirectPublish}
               onRefreshArticles={handleRefreshArticles}
+              supabaseAlert={supabaseAlert}
             />
           </div>
         )}
@@ -599,10 +596,16 @@ export default function App() {
               onSwitchPerspective={setCurrentRole}
               editorialBoard={editorialBoard}
               onUpdateEditorialBoard={handleUpdateEditorialBoard}
+              onRefreshEditorialBoard={handleRefreshEditorialBoard}
               onOpenEditorialModal={() => setActiveModal('about')}
               onDirectPublishSuccess={handleDirectPublish}
               onUpdateArticle={handleUpdateArticle}
               onDeleteArticle={handleDeleteArticle}
+              onUpdateVolumeSuccess={handleUpdateVolumeSuccess}
+              onCreateVolumeSuccess={handleCreateVolumeSuccess}
+              onRefreshVolumes={handleRefreshVolumes}
+              supabaseAlert={supabaseAlert}
+              onRefreshSupabaseData={handleRefreshArticles}
             />
           </div>
         )}

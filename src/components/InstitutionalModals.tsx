@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, ShieldCheck, BookOpen, Award, Users, Scale, FileText, CheckCircle2, AlertCircle, Building2, Globe2, ExternalLink, Printer } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ShieldCheck, BookOpen, Award, Users, Scale, FileText, CheckCircle2, AlertCircle, Building2, Globe2, ExternalLink, Printer, RefreshCw } from 'lucide-react';
 import { InstitutionalModalType, EditorialMember } from '../types';
-import { JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS } from '../data';
+import { JOURNAL_INFO } from '../data';
+import { getEditorialBoard } from '../services/editorialService';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 
 interface InstitutionalModalsProps {
@@ -17,11 +18,43 @@ export default function InstitutionalModals({
   onSelectModal,
   editorialBoardMembers
 }: InstitutionalModalsProps) {
+  const [members, setMembers] = useState<EditorialMember[]>(editorialBoardMembers || []);
+  const [loadingMembers, setLoadingMembers] = useState<boolean>(false);
+
+  // Carga asíncrona directa desde Supabase al abrir el modal para visitantes o modo incógnito
+  useEffect(() => {
+    if (activeModal === 'about' || (!members.length && activeModal)) {
+      let isMounted = true;
+      setLoadingMembers(true);
+      getEditorialBoard()
+        .then((data) => {
+          if (isMounted && data && data.length > 0) {
+            setMembers(data);
+          }
+        })
+        .catch((err) => {
+          console.warn('[InstitutionalModals] Error cargando consejo editorial desde Supabase:', err);
+        })
+        .finally(() => {
+          if (isMounted) setLoadingMembers(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [activeModal]);
+
+  // Sincronizar si el prop externo cambia
+  useEffect(() => {
+    if (editorialBoardMembers && editorialBoardMembers.length > 0) {
+      setMembers(editorialBoardMembers);
+    }
+  }, [editorialBoardMembers]);
+
   if (!activeModal) return null;
 
-  const currentMembers = editorialBoardMembers && editorialBoardMembers.length > 0
-    ? editorialBoardMembers
-    : EDITORIAL_BOARD_MEMBERS;
+  const currentMembers = members;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 fade-in" id="institutional-modal-backdrop">
@@ -158,31 +191,49 @@ export default function InstitutionalModals({
 
               {/* Consejo Editorial y Asesor */}
               <div className="space-y-4 pt-2">
-                <h5 className="font-serif font-bold text-lg text-white border-b border-white/10 pb-2">
-                  Cuerpo Editorial y Consejo Científico Asesor
-                </h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentMembers.map((member, i) => (
-                    <div key={(member as any).id || i} className="p-4 rounded-2xl border border-white/10 bg-slate-900/60 hover:border-cyan-500/40 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-[11px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
-                            {member.role}
-                          </p>
-                          <h6 className="font-serif font-bold text-white text-sm mt-0.5">
-                            {member.name}
-                          </h6>
-                          <p className="text-xs text-slate-400 mt-1">
-                            {member.institution} · <span className="font-medium text-slate-200">{member.country}</span>
-                          </p>
-                          <span className="inline-block mt-2 text-[10px] bg-white/5 text-slate-300 px-2 py-0.5 rounded-md font-mono border border-white/5">
-                            {member.specialty}
-                          </span>
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h5 className="font-serif font-bold text-lg text-white">
+                    Cuerpo Editorial y Consejo Científico Asesor
+                  </h5>
+                  {loadingMembers && (
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>Sincronizando Supabase...</span>
+                    </div>
+                  )}
+                </div>
+
+                {loadingMembers && currentMembers.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs font-mono">
+                    <RefreshCw className="w-6 h-6 animate-spin text-cyan-400 mx-auto mb-2" />
+                    <p>Consultando comité editorial en Supabase...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {currentMembers.map((member, i) => (
+                      <div key={member.id || i} className="p-4 rounded-2xl border border-white/10 bg-slate-900/60 hover:border-cyan-500/40 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-[11px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                              {member.role}
+                            </p>
+                            <h6 className="font-serif font-bold text-white text-sm mt-0.5">
+                              {member.name}
+                            </h6>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {member.institution} · <span className="font-medium text-slate-200">{member.country}</span>
+                            </p>
+                            {member.specialty && (
+                              <span className="inline-block mt-2 text-[10px] bg-white/5 text-slate-300 px-2 py-0.5 rounded-md font-mono border border-white/5">
+                                {member.specialty}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

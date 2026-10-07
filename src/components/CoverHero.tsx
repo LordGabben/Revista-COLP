@@ -23,12 +23,16 @@ import {
   PenTool,
   Archive,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Landmark
 } from 'lucide-react';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 import ColpLogo from './ColpLogo';
 import dentalHeroImg from '../assets/images/dental_research_hero_1790466211700.jpg';
 import { resolveVolumeCover } from '../lib/supabase';
+
+export const DEFAULT_INSTITUTIONAL_PRESENTATION = 
+  'Scientia Dentis es el Órgano Oficial de difusión científica y académica del Ilustre Colegio de Odontólogos de La Paz (COLP). Publicación arbitrada por pares a doble ciego, orientada a la difusión de investigaciones estomatológicas de vanguardia, innovaciones clínicas, biomateriales y salud pública bucal bajo los más rigurosos estándares éticos de Ciencia Abierta (Acceso Abierto Diamante sin cobro de APC).';
 
 // High-fidelity fallback cover mappings per dental discipline
 const CATEGORY_DEFAULT_COVERS: Record<string, string> = {
@@ -359,41 +363,16 @@ export default function CoverHero({
               </div>
             </div>
 
-            {/* Direct Volume Action Buttons */}
-            <div className="w-full max-w-md flex flex-col sm:flex-row gap-3 mt-1">
+            {/* Direct Volume Action Button (Centered / Aligned with Cover Card) */}
+            <div className="w-full max-w-60 sm:max-w-68 flex justify-center lg:justify-start mt-2">
               <button
                 onClick={onExploreCatalog}
                 id="btn-explore-current-issue"
-                className="flex-1 px-5 py-3 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-[0_0_25px_rgba(6,182,212,0.35)] hover:shadow-[0_0_35px_rgba(6,182,212,0.55)] border border-cyan-400/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 group"
+                className="w-full px-5 py-3 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-[0_0_25px_rgba(6,182,212,0.35)] hover:shadow-[0_0_35px_rgba(6,182,212,0.55)] border border-cyan-400/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 group"
               >
                 <BookOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 <span>Explorar Artículos</span>
                 <ArrowDown className="w-3.5 h-3.5 opacity-80 group-hover:translate-y-0.5 transition-transform" />
-              </button>
-
-              <button
-                onClick={handleDownloadFullIssue}
-                disabled={isDownloadingPdf}
-                id="btn-download-full-pdf"
-                className="px-4 py-3 backdrop-blur-md bg-white/5 hover:bg-white/10 border border-white/20 text-slate-200 hover:text-white font-medium text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 hover:border-cyan-400/40 shadow-sm"
-                title="Descargar el fascículo completo en formato PDF con metadatos"
-              >
-                {isDownloadingPdf ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs">Compilando...</span>
-                  </>
-                ) : downloadSuccess ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span className="text-emerald-400 text-xs">¡Descargado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs">PDF Fascículo</span>
-                  </>
-                )}
               </button>
             </div>
             
@@ -659,6 +638,29 @@ export default function CoverHero({
                 ))}
               </div>
 
+              {/* Módulo: Presentación Institucional en Archivo */}
+              <div className="rounded-2xl bg-slate-950/80 border border-white/10 p-4 sm:p-5 backdrop-blur-md relative overflow-hidden group hover:border-cyan-500/40 transition-all mt-4">
+                <div className="flex items-center gap-2.5 mb-2.5 border-b border-white/5 pb-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-950/90 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shadow-sm shrink-0">
+                    <Landmark className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-semibold font-serif text-white tracking-wide">
+                      Presentación Institucional
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      Colegio de Odontólogos de La Paz
+                    </p>
+                  </div>
+                  <span className="text-[9px] font-mono uppercase text-cyan-400/90 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full ml-auto font-semibold">
+                    Órgano Oficial COLP
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans text-justify">
+                  {currentVolume.institutional_presentation || currentVolume.institutionalPresentation || DEFAULT_INSTITUTIONAL_PRESENTATION}
+                </p>
+              </div>
+
             </div>
             ) : (
               /* Inaugural 2026 Showcase Panel */
@@ -684,24 +686,27 @@ export default function CoverHero({
                   </p>
                 </div>
 
-                {/* Badges Grid */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
-                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Acceso Abierto</span>
-                    <span className="text-xs text-white font-semibold mt-0.5 block">Diamante (Sin APC)</span>
+                {/* Módulo: Presentación Institucional */}
+                <div className="rounded-2xl bg-slate-950/85 border border-white/10 p-5 sm:p-6 backdrop-blur-md relative overflow-hidden group hover:border-cyan-500/40 transition-all shadow-inner">
+                  <div className="flex items-center gap-2.5 mb-3 border-b border-white/5 pb-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-950/90 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shadow-sm shrink-0">
+                      <Landmark className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-semibold font-serif text-white tracking-wide">
+                        Presentación Institucional
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        Colegio de Odontólogos de La Paz
+                      </p>
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-mono uppercase text-cyan-400/90 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-0.5 rounded-full ml-auto font-semibold">
+                      Órgano Oficial COLP
+                    </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
-                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Arbitraje Científico</span>
-                    <span className="text-xs text-white font-semibold mt-0.5 block">Doble Ciego por Pares</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
-                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Enfoque Temático</span>
-                    <span className="text-xs text-white font-semibold mt-0.5 block">Odontología Integral</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
-                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Interoperabilidad</span>
-                    <span className="text-xs text-white font-semibold mt-0.5 block">OJS 3.4 / DOI CrossRef</span>
-                  </div>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans text-justify">
+                    {currentVolume.institutional_presentation || currentVolume.institutionalPresentation || DEFAULT_INSTITUTIONAL_PRESENTATION}
+                  </p>
                 </div>
 
                 {/* Call to Action Buttons */}

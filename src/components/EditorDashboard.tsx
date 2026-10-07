@@ -18,6 +18,7 @@ interface EditorDashboardProps {
   onPublishArticle: (articleId: string, volumeId: string, doi: string) => void;
   onDirectPublishSuccess?: (newArticle: Article) => void;
   onRefreshArticles?: () => Promise<void>;
+  supabaseAlert?: { type: 'success' | 'error'; message: string; details?: string } | null;
 }
 
 export default function EditorDashboard({ 
@@ -26,7 +27,8 @@ export default function EditorDashboard({
   onUpdateArticle, 
   onPublishArticle, 
   onDirectPublishSuccess,
-  onRefreshArticles 
+  onRefreshArticles,
+  supabaseAlert
 }: EditorDashboardProps) {
   const [activeTab, setActiveTab] = useState<'submitted' | 'under_review' | 'accepted' | 'published' | 'direct_publish'>('submitted');
   const [assigningReviewersToId, setAssigningReviewersToId] = useState<string | null>(null);
@@ -262,6 +264,42 @@ export default function EditorDashboard({
           </button>
         </div>
       </div>
+
+      {/* Internal Supabase Connection & Status Banner (Admin/Editor Only) */}
+      {supabaseAlert && (
+        <div 
+          className={`rounded-2xl p-4 border flex items-center justify-between gap-3 backdrop-blur-md shadow-md ${
+            supabaseAlert.type === 'error'
+              ? 'bg-rose-950/70 border-rose-500/50 text-rose-200'
+              : 'bg-emerald-950/70 border-emerald-500/40 text-emerald-200'
+          }`}
+          role="status"
+        >
+          <div className="flex items-center gap-2.5">
+            {supabaseAlert.type === 'error' ? (
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            <div className="text-xs">
+              <span className="font-mono font-bold uppercase tracking-wider text-[10px] bg-black/40 px-2 py-0.5 rounded-full border border-white/10 mr-2">
+                {supabaseAlert.type === 'error' ? 'Diagnóstico Supabase' : 'Conexión Supabase Activa'}
+              </span>
+              <span>{supabaseAlert.message}</span>
+            </div>
+          </div>
+          {onRefreshArticles && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="px-2.5 py-1 text-xs font-mono rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all flex items-center gap-1 cursor-pointer shrink-0"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Sincronizar</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Editor Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="editor-stats-row">

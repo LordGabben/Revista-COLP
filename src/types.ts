@@ -16,8 +16,18 @@ export interface EditorialMember {
   role: string;
   institution: string;
   country: string;
-  specialty: string;
+  specialty?: string;
+  order_index?: number;
   category?: 'editorial' | 'advisory';
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  logo_url: string;
+  website_url?: string;
+  category?: string;
+  order_index?: number;
 }
 
 export interface User {
@@ -136,6 +146,8 @@ export interface Volume {
   articleCount?: number;
   pdfUrl?: string;
   theme?: string;
+  institutional_presentation?: string;
+  institutionalPresentation?: string;
 }
 
 export interface JournalConfig {

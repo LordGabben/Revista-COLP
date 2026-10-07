@@ -5,7 +5,6 @@ import {
   PenTool, 
   ClipboardCheck, 
   GraduationCap, 
-  Search, 
   FileText, 
   Users, 
   Menu, 
@@ -17,7 +16,8 @@ import {
   UserPlus,
   LogOut,
   User as UserIcon,
-  Crown
+  Crown,
+  Handshake
 } from 'lucide-react';
 import { UserRole, JournalConfig, InstitutionalModalType, AuthUser } from '../types';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
@@ -29,12 +29,14 @@ interface HeaderProps {
   onOpenModal: (modal: InstitutionalModalType) => void;
   onNavigateHome: () => void;
   onNavigateCurrentIssue: () => void;
-  onNavigateArchive: () => void;
-  searchQuery?: string;
-  onSearchChange?: (query: string) => void;
+  onNavigateArchive?: () => void;
+  onNavigatePartners: () => void;
+  currentView?: 'home' | 'partners';
   currentUser: AuthUser | null;
   onOpenAuthModal: (mode?: 'login' | 'register') => void;
   onLogout: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export default function Header({ 
@@ -45,8 +47,8 @@ export default function Header({
   onNavigateHome,
   onNavigateCurrentIssue,
   onNavigateArchive,
-  searchQuery = '',
-  onSearchChange,
+  onNavigatePartners,
+  currentView = 'home',
   currentUser,
   onOpenAuthModal,
   onLogout
@@ -105,13 +107,13 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-3 sm:top-4 z-50 mx-auto max-w-7xl px-3 sm:px-6 w-full" id="app-header">
+    <header className="sticky top-3 sm:top-4 z-50 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full" id="app-header">
       
       {/* Floating Island Container with Glassmorphism and Volumetric Edge */}
-      <div className="backdrop-blur-2xl bg-slate-950/80 border border-white/10 rounded-2xl shadow-[0_10px_35px_-5px_rgba(0,0,0,0.85),0_0_20px_rgba(6,182,212,0.08)] ring-1 ring-white/5 transition-all">
+      <div className="backdrop-blur-2xl bg-slate-950/85 border border-white/10 rounded-2xl shadow-[0_10px_35px_-5px_rgba(0,0,0,0.85),0_0_20px_rgba(6,182,212,0.08)] ring-1 ring-white/5 transition-all">
         
         {/* Main Header Row */}
-        <div className="px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-2 lg:gap-3 2xl:gap-6 min-w-0">
+        <div className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-4 lg:gap-6 min-w-0">
           
           {/* Brand Wordmark & Official Seal */}
           <div 
@@ -134,7 +136,7 @@ export default function Header({
             
             <div className="leading-tight">
               <div className="flex items-baseline gap-1.5 flex-wrap">
-                <span className="font-serif text-base sm:text-lg 2xl:text-xl font-black text-white tracking-tight group-hover:text-cyan-200 transition-colors">
+                <span className="font-serif text-base sm:text-lg lg:text-xl font-black text-white tracking-tight group-hover:text-cyan-200 transition-colors">
                   Scientia Dentis
                 </span>
                 <span className="font-serif italic text-xs sm:text-sm font-semibold text-cyan-400">
@@ -149,11 +151,11 @@ export default function Header({
             </div>
           </div>
 
-          {/* Center Navigation Links (Higgsfield Clean Minimalist Style) */}
-          <nav className="hidden xl:flex items-center gap-0.5 2xl:gap-1 text-[11px] 2xl:text-xs font-medium text-slate-300 shrink">
+          {/* Center Navigation Links (Harmonious & Responsive Spacing) */}
+          <nav className="hidden lg:flex items-center gap-2 xl:gap-3.5 text-xs font-medium text-slate-300">
             <button
               onClick={onNavigateHome}
-              className={`px-2 2xl:px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 currentRole === 'reader'
                   ? 'bg-white/10 text-white shadow-xs font-semibold' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -163,76 +165,67 @@ export default function Header({
             </button>
             <button
               onClick={onNavigateCurrentIssue}
-              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
+              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                currentRole === 'reader' && currentView === 'home'
+                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
             >
               Edición Actual
             </button>
             <button
-              onClick={onNavigateArchive}
-              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
+              onClick={onNavigatePartners}
+              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                currentRole === 'reader' && currentView === 'partners'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-xs font-semibold'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
             >
-              Catálogo & Archivo
+              <Handshake className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Partners</span>
             </button>
             <button
               onClick={() => onOpenModal('guidelines')}
-              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
+              className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
             >
               Guía de Autores
             </button>
             <button
               onClick={() => onOpenModal('about')}
-              className="px-2 2xl:px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
+              className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer whitespace-nowrap"
             >
               Comité Editorial
             </button>
             
             <button
               onClick={handleAuthorAction}
-              className={`px-2 2xl:px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 currentRole === 'author' 
                   ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 font-semibold' 
                   : 'text-teal-400 hover:bg-teal-500/10'
               }`}
             >
-              <PenTool className="w-3 h-3" />
+              <PenTool className="w-3.5 h-3.5" />
               <span>Enviar Manuscrito</span>
             </button>
 
             {currentUser?.role === 'superadmin' && (
               <button
                 onClick={() => onChangeRole('superadmin')}
-                className={`px-2 2xl:px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   currentRole === 'superadmin'
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-semibold'
                     : 'text-purple-400 hover:bg-purple-500/10'
                 }`}
               >
-                <Crown className="w-3 h-3" />
+                <Crown className="w-3.5 h-3.5" />
                 <span>SuperAdmin CMS</span>
               </button>
             )}
           </nav>
 
-          {/* Right Utility: Interactive Search + Authentication / User Island */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            
-            {/* Quick Floating Search Input with Keyboard Badge (Shown on ultra-wide screens to prevent header overflow) */}
-            {onSearchChange && (
-              <div className="relative hidden 2xl:block w-36 2xl:w-44">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400/70 w-3.5 h-3.5" />
-                <input
-                  type="text"
-                  placeholder="Buscar artículos..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="w-full pl-8 pr-10 py-1.5 bg-slate-900/80 border border-white/10 hover:border-cyan-500/40 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition-all"
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-mono text-slate-500 bg-white/5 border border-white/10 rounded px-1 py-0.5 pointer-events-none flex items-center gap-0.5">
-                  <Command className="w-2.5 h-2.5" /> K
-                </span>
-              </div>
-            )}
-
+          {/* Right Utility: Authentication / User Island / CMS Access */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Authenticated User Session / Login Button */}
             {currentUser ? (
               <div className="relative">
@@ -386,7 +379,7 @@ export default function Header({
             {/* Mobile Hamburger Drawer Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="xl:hidden p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -396,20 +389,7 @@ export default function Header({
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="xl:hidden px-4 pb-4 pt-2 border-t border-white/10 space-y-3 fade-in">
-            {onSearchChange && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400/70 w-3.5 h-3.5" />
-                <input
-                  type="text"
-                  placeholder="Buscar artículos..."
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none"
-                />
-              </div>
-            )}
-
+          <div className="lg:hidden px-4 pb-4 pt-2 border-t border-white/10 space-y-3 fade-in">
             <div className="grid grid-cols-2 gap-2 text-xs font-medium">
               <button
                 onClick={() => {
@@ -431,12 +411,17 @@ export default function Header({
               </button>
               <button
                 onClick={() => {
-                  onNavigateArchive();
+                  onNavigatePartners();
                   setMobileMenuOpen(false);
                 }}
-                className="p-2.5 rounded-xl text-left bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+                className={`p-2.5 rounded-xl text-left flex items-center gap-2 cursor-pointer ${
+                  currentView === 'partners'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-semibold'
+                    : 'bg-white/5 hover:bg-white/10 text-white'
+                }`}
               >
-                Catálogo & Archivo
+                <Handshake className="w-4 h-4 text-cyan-400" />
+                <span>Partners</span>
               </button>
               <button
                 onClick={() => {

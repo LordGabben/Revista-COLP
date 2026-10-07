@@ -50,38 +50,28 @@ export function resolveVolumeCover(id?: string, coverImage?: string | null): str
  * Transforms database volume row to frontend Volume type
  */
 export function mapVolumeRow(row: any): Volume {
-  const isCurrent = Boolean(row.is_current ?? row.isCurrent ?? true);
+  const isExplicitCurrent = (row.is_current !== undefined && row.is_current !== null)
+    ? Boolean(row.is_current)
+    : (row.isCurrent !== undefined && row.isCurrent !== null)
+      ? Boolean(row.isCurrent)
+      : (row.id === 'v1n1');
   const safeCover = resolveVolumeCover(row.id, row.cover_image || row.coverImage);
-
-  // Vol. 1 Núm. 1 (2026) is the official first volume of 2026
-  if (isCurrent || row.id === 'v1n1' || row.id === 'v12n2') {
-    return {
-      id: row.id,
-      title: 'Vol. 1 Núm. 1 (2026): Scientia Dentis - Revista Científica Oficial',
-      volumeNumber: 1,
-      issueNumber: 1,
-      year: 2026,
-      isCurrent: true,
-      publishedAt: row.published_at ?? '2026-01-15',
-      coverImage: safeCover,
-      articleCount: Math.max(1, row.article_count ?? 1),
-      theme: 'Odontología Multidisciplinaria & Investigación Clínica',
-      pdfUrl: row.pdf_url ?? 'Scientia_Dentis_Vol1_Num1_2026.pdf',
-    };
-  }
+  const instPres = row.institutional_presentation || row.institutionalPresentation || undefined;
 
   return {
     id: row.id,
-    title: row.title || 'Scientia Dentis',
-    volumeNumber: row.volume_number ?? 1,
-    issueNumber: row.issue_number ?? 1,
-    year: row.year ?? 2026,
-    isCurrent: false,
-    publishedAt: row.published_at ?? new Date().toISOString().split('T')[0],
+    title: row.title || 'Vol. 1 Núm. 1 (2026): Scientia Dentis - Revista Científica Oficial',
+    volumeNumber: Number(row.volume_number ?? row.volumeNumber ?? 1),
+    issueNumber: Number(row.issue_number ?? row.issueNumber ?? 1),
+    year: Number(row.year ?? 2026),
+    isCurrent: isExplicitCurrent,
+    publishedAt: row.published_at || row.publishedAt || '2026-01-15',
     coverImage: safeCover,
-    articleCount: row.article_count ?? 0,
-    theme: row.theme,
-    pdfUrl: row.pdf_url,
+    articleCount: Number(row.article_count ?? row.articleCount ?? 0),
+    theme: row.theme || 'Odontología Multidisciplinaria & Investigación Clínica',
+    pdfUrl: row.pdf_url || row.pdfUrl || 'Scientia_Dentis_Vol1_Num1_2026.pdf',
+    institutional_presentation: instPres,
+    institutionalPresentation: instPres,
   };
 }
 

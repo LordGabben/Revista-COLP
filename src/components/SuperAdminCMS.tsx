@@ -42,16 +42,21 @@ import {
   ChevronRight,
   FolderPlus,
   Paperclip,
-  Download
+  Download,
+  Landmark,
+  Calendar,
+  CheckSquare,
+  Handshake
 } from 'lucide-react';
-import { AuthUser, UserRole, Article, EditorialMember, Volume, ArticleFile, ArticleStatus } from '../types';
+import { AuthUser, UserRole, Article, EditorialMember, Volume, ArticleFile, ArticleStatus, Partner } from '../types';
 import { 
   fetchAllProfiles, 
   updateUserRole, 
   createOfficialAccount, 
   deleteUserProfile,
   saveArticleToSupabase,
-  deleteArticleFromSupabase
+  deleteArticleFromSupabase,
+  resolveVolumeCover
 } from '../lib/supabase';
 import { 
   EDITORIAL_BOARD_MEMBERS, 
@@ -63,6 +68,25 @@ import {
   coverZygomaticImg 
 } from '../data';
 import { uploadPdfToStorage, formatFileSize } from '../services/articlesService';
+import { 
+  updateVolumeDetails, 
+  createVolume, 
+  setCurrentActiveVolume, 
+  getVolumes 
+} from '../services/volumesService';
+import { 
+  getEditorialBoard,
+  updateEditorialMember, 
+  addEditorialMember, 
+  deleteEditorialMember 
+} from '../services/editorialService';
+import { 
+  getPartners, 
+  addPartner, 
+  updatePartner, 
+  deletePartner 
+} from '../services/partnersService';
+import { DEFAULT_INSTITUTIONAL_PRESENTATION } from './CoverHero';
 import DirectPublishModal from './DirectPublishModal';
 
 // High-fidelity fallback cover mappings per dental discipline
@@ -94,10 +118,16 @@ interface SuperAdminCMSProps {
   onSwitchPerspective: (role: UserRole) => void;
   editorialBoard: EditorialMember[];
   onUpdateEditorialBoard: (updated: EditorialMember[]) => void;
+  onRefreshEditorialBoard?: () => Promise<void>;
   onOpenEditorialModal?: () => void;
   onDirectPublishSuccess?: (newArticle: Article) => void;
   onUpdateArticle?: (updatedArticle: Article) => Promise<void> | void;
   onDeleteArticle?: (articleId: string) => Promise<void> | void;
+  onUpdateVolumeSuccess?: (updatedVolume: Volume) => void;
+  onCreateVolumeSuccess?: (newVolume: Volume) => void;
+  onRefreshVolumes?: () => Promise<Volume[]>;
+  supabaseAlert?: { type: 'success' | 'error'; message: string; details?: string } | null;
+  onRefreshSupabaseData?: () => Promise<void>;
 }
 
 export default function SuperAdminCMS({
@@ -107,13 +137,19 @@ export default function SuperAdminCMS({
   onSwitchPerspective,
   editorialBoard,
   onUpdateEditorialBoard,
+  onRefreshEditorialBoard,
   onOpenEditorialModal,
   onDirectPublishSuccess,
   onUpdateArticle,
-  onDeleteArticle
+  onDeleteArticle,
+  onUpdateVolumeSuccess,
+  onCreateVolumeSuccess,
+  onRefreshVolumes,
+  supabaseAlert,
+  onRefreshSupabaseData
 }: SuperAdminCMSProps) {
   // Navigation Tabs inside CMS
-  const [activeTab, setActiveTab] = useState<'articles' | 'users' | 'editorial_board' | 'indexing' | 'audit'>('articles');
+  const [activeTab, setActiveTab] = useState<'articles' | 'volume_management' | 'users' | 'editorial_board' | 'partners' | 'indexing' | 'audit'>('articles');
   const [isDirectPublishModalOpen, setIsDirectPublishModalOpen] = useState(false);
 
   // Article Management State
@@ -213,6 +249,221 @@ export default function SuperAdminCMS({
   const showNotification = (text: string, type: 'success' | 'error' = 'success') => {
     setFeedbackNotice({ text, type });
     setTimeout(() => setFeedbackNotice(null), 4000);
+  };
+
+  // =========================================================================
+  // GESTIÓN DEL VOLUMEN Y PORTADA (ESTADOS Y MANEJADORES)
+  // =========================================================================
+  const activeVolume = volumes.find(v => v.isCurrent) || volumes[0];
+  const [selectedVolId, setSelectedVolId] = useState<string>(activeVolume?.id || 'v1n1');
+  const currentSelectedVol = volumes.find(v => v.id === selectedVolId) || activeVolume;
+
+  // Campos de edición del volumen seleccionado
+  const [volTitle, setVolTitle] = useState(currentSelectedVol?.title || '');
+  const [volVolumeNumber, setVolVolumeNumber] = useState<number>(currentSelectedVol?.volumeNumber || 1);
+  const [volIssueNumber, setVolIssueNumber] = useState<number>(currentSelectedVol?.issueNumber || 1);
+  const [volYear, setVolYear] = useState<number>(currentSelectedVol?.year || 2026);
+  const [volPublishedAt, setVolPublishedAt] = useState<string>(currentSelectedVol?.publishedAt || '2026-01-15');
+  const [volTheme, setVolTheme] = useState<string>(currentSelectedVol?.theme || '');
+  const [volInstitutionalPresentation, setVolInstitutionalPresentation] = useState<string>(
+    currentSelectedVol?.institutional_presentation || currentSelectedVol?.institutionalPresentation || DEFAULT_INSTITUTIONAL_PRESENTATION
+  );
+  const [newVolCoverFile, setNewVolCoverFile] = useState<File | null>(null);
+  const [newVolCoverPreview, setNewVolCoverPreview] = useState<string | null>(null);
+  const [isSavingVolume, setIsSavingVolume] = useState(false);
+  const [volSavingProgress, setVolSavingProgress] = useState('');
+
+  // Sincronizar campos al cambiar el volumen seleccionado
+  useEffect(() => {
+    if (currentSelectedVol) {
+      setVolTitle(currentSelectedVol.title);
+      setVolVolumeNumber(currentSelectedVol.volumeNumber);
+      setVolIssueNumber(currentSelectedVol.issueNumber);
+      setVolYear(currentSelectedVol.year);
+      setVolPublishedAt(currentSelectedVol.publishedAt);
+      setVolTheme(currentSelectedVol.theme || '');
+      setVolInstitutionalPresentation(
+        currentSelectedVol.institutional_presentation || currentSelectedVol.institutionalPresentation || DEFAULT_INSTITUTIONAL_PRESENTATION
+      );
+      setNewVolCoverFile(null);
+      if (newVolCoverPreview) {
+        URL.revokeObjectURL(newVolCoverPreview);
+        setNewVolCoverPreview(null);
+      }
+    }
+  }, [selectedVolId, volumes]);
+
+  // Formulario de creación de nuevo volumen
+  const [showCreateVolModal, setShowCreateVolModal] = useState(false);
+  const [newVolId, setNewVolId] = useState(`v1n${(volumes.length || 1) + 1}`);
+  const [newVolTitle, setNewVolTitle] = useState(`Vol. 1 Núm. ${(volumes.length || 1) + 1} (2026): Scientia Dentis - Innovación Estomatológica`);
+  const [newVolVolumeNumber, setNewVolVolumeNumber] = useState<number>(1);
+  const [newVolIssueNumber, setNewVolIssueNumber] = useState<number>((volumes.length || 1) + 1);
+  const [newVolYear, setNewVolYear] = useState<number>(2026);
+  const [newVolPublishedAt, setNewVolPublishedAt] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [newVolTheme, setNewVolTheme] = useState('Odontología Multidisciplinaria & Investigación Clínica');
+  const [newVolInstitutionalPresentation, setNewVolInstitutionalPresentation] = useState(DEFAULT_INSTITUTIONAL_PRESENTATION);
+  const [newVolIsCurrent, setNewVolIsCurrent] = useState(true);
+  const [createVolCoverFile, setCreateVolCoverFile] = useState<File | null>(null);
+  const [createVolCoverPreview, setCreateVolCoverPreview] = useState<string | null>(null);
+  const [isCreatingVol, setIsCreatingVol] = useState(false);
+  const [createVolProgress, setCreateVolProgress] = useState('');
+
+  // Manejo de archivo de portada para volumen existente
+  const handleVolCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
+      showNotification('Formato de portada no compatible. Use PNG, JPG o WEBP.', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showNotification('La imagen de portada no debe superar los 10 MB.', 'error');
+      return;
+    }
+
+    if (newVolCoverPreview) URL.revokeObjectURL(newVolCoverPreview);
+    setNewVolCoverFile(file);
+    setNewVolCoverPreview(URL.createObjectURL(file));
+  };
+
+  // Manejo de archivo de portada para nuevo volumen
+  const handleCreateVolCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
+      showNotification('Formato de portada no compatible. Use PNG, JPG o WEBP.', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showNotification('La imagen de portada no debe superar los 10 MB.', 'error');
+      return;
+    }
+
+    if (createVolCoverPreview) URL.revokeObjectURL(createVolCoverPreview);
+    setCreateVolCoverFile(file);
+    setCreateVolCoverPreview(URL.createObjectURL(file));
+  };
+
+  // Guardar cambios en el volumen seleccionado
+  const handleSaveVolumeDetails = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!currentSelectedVol) return;
+
+    setIsSavingVolume(true);
+    setVolSavingProgress('Subiendo portada a Supabase Storage y actualizando public.volumes...');
+
+    try {
+      const updates: Partial<Volume> = {
+        title: volTitle.trim(),
+        volumeNumber: Number(volVolumeNumber),
+        issueNumber: Number(volIssueNumber),
+        year: Number(volYear),
+        publishedAt: volPublishedAt,
+        theme: volTheme.trim() || undefined,
+        institutional_presentation: volInstitutionalPresentation.trim() || DEFAULT_INSTITUTIONAL_PRESENTATION
+      };
+
+      const updated = await updateVolumeDetails(currentSelectedVol.id, updates, newVolCoverFile || undefined);
+
+      if (onUpdateVolumeSuccess) {
+        onUpdateVolumeSuccess(updated);
+      }
+      if (onRefreshVolumes) {
+        await onRefreshVolumes();
+      }
+
+      setNewVolCoverFile(null);
+      if (newVolCoverPreview) {
+        URL.revokeObjectURL(newVolCoverPreview);
+        setNewVolCoverPreview(null);
+      }
+
+      showNotification('✅ ¡Volumen y portada actualizados exitosamente en Supabase! La portada pública y los datos editoriales se han refrescado en tiempo real.');
+    } catch (err: any) {
+      console.error('Error al actualizar volumen:', err);
+      showNotification(`Error al guardar cambios: ${err.message || String(err)}`, 'error');
+    } finally {
+      setIsSavingVolume(false);
+      setVolSavingProgress('');
+    }
+  };
+
+  // Conmutar volumen activo
+  const handleSwitchActiveVolume = async (targetId: string) => {
+    setIsSavingVolume(true);
+    try {
+      await setCurrentActiveVolume(targetId);
+      const targetVol = volumes.find(v => v.id === targetId);
+      if (targetVol && onUpdateVolumeSuccess) {
+        onUpdateVolumeSuccess({ ...targetVol, isCurrent: true });
+      }
+      if (onRefreshVolumes) {
+        await onRefreshVolumes();
+      }
+      setSelectedVolId(targetId);
+      showNotification(`✅ Fascículo "${targetVol?.title || targetId}" establecido como Volumen Activo en Portada.`);
+    } catch (err: any) {
+      console.error('Error al cambiar volumen activo:', err);
+      showNotification(`Error al conmutar volumen: ${err.message || String(err)}`, 'error');
+    } finally {
+      setIsSavingVolume(false);
+    }
+  };
+
+  // Crear nuevo volumen en Supabase
+  const handleCreateNewVolumeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVolId.trim() || !newVolTitle.trim()) {
+      showNotification('Por favor complete el identificador y título del volumen.', 'error');
+      return;
+    }
+
+    setIsCreatingVol(true);
+    setCreateVolProgress('Subiendo portada a Supabase Storage y registrando nuevo volumen...');
+
+    try {
+      const cleanId = newVolId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      const volumeData: Volume = {
+        id: cleanId,
+        title: newVolTitle.trim(),
+        volumeNumber: Number(newVolVolumeNumber),
+        issueNumber: Number(newVolIssueNumber),
+        year: Number(newVolYear),
+        isCurrent: newVolIsCurrent,
+        publishedAt: newVolPublishedAt,
+        theme: newVolTheme.trim() || undefined,
+        articleCount: 0,
+        institutional_presentation: newVolInstitutionalPresentation.trim() || DEFAULT_INSTITUTIONAL_PRESENTATION
+      };
+
+      const created = await createVolume(volumeData, createVolCoverFile || undefined);
+
+      if (onCreateVolumeSuccess) {
+        onCreateVolumeSuccess(created);
+      }
+      if (onRefreshVolumes) {
+        await onRefreshVolumes();
+      }
+
+      setSelectedVolId(created.id);
+      setShowCreateVolModal(false);
+      setCreateVolCoverFile(null);
+      if (createVolCoverPreview) {
+        URL.revokeObjectURL(createVolCoverPreview);
+        setCreateVolCoverPreview(null);
+      }
+
+      showNotification(`✅ Nuevo volumen "${created.title}" creado y guardado exitosamente en Supabase.`);
+    } catch (err: any) {
+      console.error('Error creando volumen:', err);
+      showNotification(`Error al crear volumen: ${err.message || String(err)}`, 'error');
+    } finally {
+      setIsCreatingVol(false);
+      setCreateVolProgress('');
+    }
   };
 
   // Open Article Edit Modal
@@ -537,74 +788,240 @@ export default function SuperAdminCMS({
     setShowMemberModal(true);
   };
 
-  // Editorial Member: Save (Add or Update)
-  const handleSaveMember = (e: React.FormEvent) => {
+  const [isSavingMember, setIsSavingMember] = useState(false);
+
+  // Editorial Member: Save (Add or Update directly in Supabase public.editorial_board)
+  const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!memName.trim() || !memRole.trim()) {
       showNotification('Complete el nombre y cargo del miembro.', 'error');
       return;
     }
 
-    if (editingMemberId) {
-      // Update existing
-      const updated = editorialBoard.map(m => {
-        if (m.id === editingMemberId) {
-          return {
-            ...m,
-            name: memName.trim(),
-            role: memRole.trim(),
-            institution: memInstitution.trim(),
-            country: memCountry.trim(),
-            specialty: memSpecialty.trim(),
-            category: memCategory
-          };
-        }
-        return m;
-      });
-      onUpdateEditorialBoard(updated);
-      showNotification(`Miembro "${memName}" actualizado con éxito.`);
-    } else {
-      // Add new
-      const newMember: EditorialMember = {
-        id: 'member_' + Date.now(),
-        name: memName.trim(),
-        role: memRole.trim(),
-        institution: memInstitution.trim(),
-        country: memCountry.trim(),
-        specialty: memSpecialty.trim(),
-        category: memCategory
-      };
-      const updated = [...editorialBoard, newMember];
-      onUpdateEditorialBoard(updated);
-      showNotification(`Nuevo miembro "${memName}" agregado al comité.`);
-    }
+    setIsSavingMember(true);
+    try {
+      if (editingMemberId) {
+        // Actualizar fila en Supabase public.editorial_board
+        const updatedMember = await updateEditorialMember(editingMemberId, {
+          name: memName.trim(),
+          role: memRole.trim(),
+          institution: memInstitution.trim(),
+          country: memCountry.trim(),
+          specialty: memSpecialty.trim(),
+          category: memCategory
+        });
 
-    setShowMemberModal(false);
+        // Actualizar estado reactivo
+        const updated = editorialBoard.map(m => m.id === editingMemberId ? updatedMember : m);
+        onUpdateEditorialBoard(updated);
+        if (onRefreshEditorialBoard) {
+          await onRefreshEditorialBoard();
+        }
+        showNotification(`✅ Cambios guardados en Supabase para "${memName}".`);
+      } else {
+        // Insertar en Supabase public.editorial_board
+        const newMember = await addEditorialMember({
+          name: memName.trim(),
+          role: memRole.trim(),
+          institution: memInstitution.trim(),
+          country: memCountry.trim(),
+          specialty: memSpecialty.trim(),
+          category: memCategory,
+          order_index: editorialBoard.length + 1
+        });
+
+        const updated = [...editorialBoard, newMember];
+        onUpdateEditorialBoard(updated);
+        if (onRefreshEditorialBoard) {
+          await onRefreshEditorialBoard();
+        }
+        showNotification(`✅ Nuevo miembro "${memName}" guardado en Supabase.`);
+      }
+
+      setShowMemberModal(false);
+    } catch (err: any) {
+      console.error('Error al guardar miembro en Supabase:', err);
+      showNotification(`Error al guardar en Supabase: ${err.message || String(err)}`, 'error');
+    } finally {
+      setIsSavingMember(false);
+    }
   };
 
-  // Editorial Member: Delete
-  const handleDeleteMember = (memberId: string, memberName: string) => {
-    if (confirm(`¿Desea remover a "${memberName}" del Cuerpo Editorial / Consejo Asesor?`)) {
-      const updated = editorialBoard.filter(m => m.id !== memberId);
-      onUpdateEditorialBoard(updated);
-      showNotification(`Miembro "${memberName}" removido.`);
+  // Editorial Member: Delete directly from Supabase public.editorial_board
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    if (confirm(`¿Desea remover a "${memberName}" del Cuerpo Editorial / Consejo Asesor en Supabase?`)) {
+      try {
+        await deleteEditorialMember(memberId);
+        const updated = editorialBoard.filter(m => m.id !== memberId);
+        onUpdateEditorialBoard(updated);
+        if (onRefreshEditorialBoard) {
+          await onRefreshEditorialBoard();
+        }
+        showNotification(`✅ Miembro "${memberName}" eliminado de Supabase.`);
+      } catch (err: any) {
+        console.error('Error al eliminar miembro en Supabase:', err);
+        showNotification(`Error al eliminar de Supabase: ${err.message || String(err)}`, 'error');
+      }
+    }
+  };
+
+  // Editorial Member: Sincronizar desde Supabase
+  const handleRefreshEditorialMembers = async () => {
+    try {
+      const fresh = await getEditorialBoard();
+      onUpdateEditorialBoard(fresh);
+      if (onRefreshEditorialBoard) {
+        await onRefreshEditorialBoard();
+      }
+      showNotification('✅ Consejo Editorial sincronizado desde Supabase.');
+    } catch (err: any) {
+      console.error('Error sincronizando consejo editorial:', err);
+      showNotification(`Error al sincronizar: ${err.message || String(err)}`, 'error');
     }
   };
 
   // Editorial Member: Reset to Factory Defaults
-  const handleResetEditorialBoard = () => {
-    if (confirm('¿Desea restablecer el Cuerpo Editorial a los integrantes oficiales iniciales del COLP?')) {
-      const defaultList: EditorialMember[] = EDITORIAL_BOARD_MEMBERS.map((m, idx) => ({
-        id: 'default_colp_' + idx,
-        name: m.name,
-        role: m.role,
-        institution: m.institution,
-        country: m.country,
-        specialty: m.specialty,
-        category: m.role.toLowerCase().includes('asesor') ? 'advisory' : 'editorial'
-      }));
-      onUpdateEditorialBoard(defaultList);
-      showNotification('Cuerpo Editorial restablecido a los valores oficiales de fábrica.');
+  const handleResetEditorialBoard = async () => {
+    if (confirm('¿Desea restablecer el Cuerpo Editorial consultando los registros base de Supabase?')) {
+      await handleRefreshEditorialMembers();
+    }
+  };
+
+  // =========================================================================
+  // GESTIÓN DE PARTNERS & AUSPICIADORES (ESTADOS Y MANEJADORES)
+  // =========================================================================
+  const [partnersList, setPartnersList] = useState<Partner[]>([]);
+  const [isLoadingPartners, setIsLoadingPartners] = useState(false);
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
+
+  // Partner Form Fields
+  const [partnerName, setPartnerName] = useState('');
+  const [partnerLogoUrl, setPartnerLogoUrl] = useState('');
+  const [partnerWebsiteUrl, setPartnerWebsiteUrl] = useState('');
+  const [partnerCategory, setPartnerCategory] = useState('Institucional');
+  const [partnerOrderIndex, setPartnerOrderIndex] = useState<number>(1);
+  const [partnerLogoFile, setPartnerLogoFile] = useState<File | null>(null);
+  const [partnerLogoPreview, setPartnerLogoPreview] = useState<string | null>(null);
+  const [isSavingPartner, setIsSavingPartner] = useState(false);
+  const [partnerFilterCategory, setPartnerFilterCategory] = useState<string>('all');
+
+  const fetchCmsPartners = async () => {
+    setIsLoadingPartners(true);
+    try {
+      const data = await getPartners();
+      setPartnersList(data);
+    } catch (err: any) {
+      console.warn('Error cargando partners en CMS:', err);
+    } finally {
+      setIsLoadingPartners(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCmsPartners();
+  }, []);
+
+  const handleOpenAddPartner = () => {
+    setEditingPartnerId(null);
+    setPartnerName('');
+    setPartnerLogoUrl('');
+    setPartnerWebsiteUrl('');
+    setPartnerCategory('Institucional');
+    setPartnerOrderIndex(partnersList.length + 1);
+    setPartnerLogoFile(null);
+    if (partnerLogoPreview) URL.revokeObjectURL(partnerLogoPreview);
+    setPartnerLogoPreview(null);
+    setShowPartnerModal(true);
+  };
+
+  const handleOpenEditPartner = (p: Partner) => {
+    setEditingPartnerId(p.id);
+    setPartnerName(p.name);
+    setPartnerLogoUrl(p.logo_url);
+    setPartnerWebsiteUrl(p.website_url || '');
+    setPartnerCategory(p.category || 'Institucional');
+    setPartnerOrderIndex(p.order_index ?? 1);
+    setPartnerLogoFile(null);
+    if (partnerLogoPreview) URL.revokeObjectURL(partnerLogoPreview);
+    setPartnerLogoPreview(null);
+    setShowPartnerModal(true);
+  };
+
+  const handlePartnerLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (partnerLogoPreview) URL.revokeObjectURL(partnerLogoPreview);
+    setPartnerLogoFile(file);
+    setPartnerLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSavePartnerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerName.trim()) {
+      showNotification('Por favor ingrese el nombre del partner.', 'error');
+      return;
+    }
+
+    setIsSavingPartner(true);
+    try {
+      if (editingPartnerId) {
+        const updated = await updatePartner(
+          editingPartnerId,
+          {
+            name: partnerName.trim(),
+            logo_url: partnerLogoUrl || undefined,
+            website_url: partnerWebsiteUrl.trim() || undefined,
+            category: partnerCategory,
+            order_index: Number(partnerOrderIndex)
+          },
+          partnerLogoFile || undefined
+        );
+
+        setPartnersList((prev) =>
+          prev.map((item) => (item.id === editingPartnerId ? updated : item))
+        );
+        showNotification(`✅ Partner "${updated.name}" actualizado exitosamente en Supabase.`);
+      } else {
+        const created = await addPartner(
+          {
+            name: partnerName.trim(),
+            logo_url: partnerLogoUrl.trim() || '/colp_logo.png',
+            website_url: partnerWebsiteUrl.trim() || undefined,
+            category: partnerCategory,
+            order_index: Number(partnerOrderIndex)
+          },
+          partnerLogoFile || undefined
+        );
+
+        setPartnersList((prev) => [...prev, created]);
+        showNotification(`✅ Nuevo partner "${created.name}" registrado en Supabase.`);
+      }
+
+      setShowPartnerModal(false);
+      setPartnerLogoFile(null);
+      if (partnerLogoPreview) {
+        URL.revokeObjectURL(partnerLogoPreview);
+        setPartnerLogoPreview(null);
+      }
+    } catch (err: any) {
+      console.error('Error guardando partner:', err);
+      showNotification(`Error al guardar partner: ${err.message || String(err)}`, 'error');
+    } finally {
+      setIsSavingPartner(false);
+    }
+  };
+
+  const handleDeletePartner = async (id: string, name: string) => {
+    if (confirm(`¿Está seguro de eliminar a "${name}" de los partners en Supabase?`)) {
+      try {
+        await deletePartner(id);
+        setPartnersList((prev) => prev.filter((p) => p.id !== id));
+        showNotification(`✅ Partner "${name}" eliminado exitosamente de Supabase.`);
+      } catch (err: any) {
+        console.error('Error eliminando partner:', err);
+        showNotification(`Error al eliminar partner: ${err.message || String(err)}`, 'error');
+      }
     }
   };
 
@@ -765,6 +1182,46 @@ export default function SuperAdminCMS({
           </div>
         </div>
 
+        {/* Real-time Supabase Connection Status (Internal CMS Diagnostic) */}
+        {supabaseAlert && (
+          <div 
+            className={`mt-5 rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-md ${
+              supabaseAlert.type === 'error'
+                ? 'bg-rose-950/80 border-rose-500/60 text-rose-200 shadow-rose-950/50'
+                : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200 shadow-emerald-950/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {supabaseAlert.type === 'error' ? (
+                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              )}
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono tracking-wider font-bold px-2 py-0.5 rounded-full bg-black/40 border border-white/10">
+                    {supabaseAlert.type === 'error' ? 'Diagnóstico Supabase en Vivo' : 'Conexión Supabase Activa'}
+                  </span>
+                  <span className="text-xs font-semibold">{supabaseAlert.message}</span>
+                </div>
+                {supabaseAlert.details && (
+                  <p className="text-[11px] font-mono opacity-80 break-all">{supabaseAlert.details}</p>
+                )}
+              </div>
+            </div>
+            {onRefreshSupabaseData && (
+              <button
+                onClick={onRefreshSupabaseData}
+                className="px-3 py-1.5 text-xs font-mono font-bold rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center gap-1.5 cursor-pointer text-white shrink-0 self-start sm:self-auto"
+                title="Reintentar consulta en Supabase"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reconectar</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* CMS Segmented Navigation Tabs */}
         <div className="flex flex-wrap items-center gap-2 mt-6 pt-5 border-t border-white/10">
           <button
@@ -777,6 +1234,18 @@ export default function SuperAdminCMS({
           >
             <FileText className="w-4 h-4 text-amber-300" />
             <span>Artículos & Archivos ({articles.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('volume_management')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'volume_management'
+                ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white shadow-lg shadow-cyan-950/50 border border-cyan-400/50'
+                : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-white/5 border border-white/10'
+            }`}
+          >
+            <Landmark className="w-4 h-4 text-cyan-300" />
+            <span>🏛️ Gestión del Volumen y Portada ({volumes.length})</span>
           </button>
 
           <button
@@ -801,6 +1270,18 @@ export default function SuperAdminCMS({
           >
             <Award className="w-4 h-4" />
             <span>Cuerpo Editorial & Consejo Asesor ({editorialBoard.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('partners')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'partners'
+                ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg shadow-teal-950/50 border border-teal-400/40'
+                : 'bg-slate-950/60 text-slate-400 hover:text-white hover:bg-white/5 border border-white/10'
+            }`}
+          >
+            <Handshake className="w-4 h-4 text-cyan-300" />
+            <span>🤝 Gestión de Partners ({partnersList.length})</span>
           </button>
 
           <button
@@ -1141,6 +1622,684 @@ export default function SuperAdminCMS({
       )}
 
       {/* ========================================================================= */}
+      {/* TAB: GESTIÓN DEL VOLUMEN Y PORTADA PRINCIPAL (PERSISTENCIA SUPABASE)     */}
+      {/* ========================================================================= */}
+      {activeTab === 'volume_management' && (
+        <div className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 sm:p-7 backdrop-blur-xl shadow-2xl space-y-7" id="cms-volume-management-panel">
+          
+          {/* Module Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-6 border-b border-white/10">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono mb-2 shadow-xs">
+                <Landmark className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Módulo Editorial CMS · Gestión del Volumen y Portada Principal</span>
+              </div>
+              <h3 className="font-serif text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                <span>Gestor de Fascículos, Portada y Presentación Institucional</span>
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 font-sans mt-1 max-w-3xl">
+                Configure la presentación institucional oficial, actualice la imagen de portada y fecha del volumen activo, o cree nuevos volúmenes y alterne cuál se exhibe en la portada en tiempo real con persistencia en Supabase.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <button
+                onClick={() => {
+                  setNewVolId(`v1n${(volumes.length || 1) + 1}`);
+                  setNewVolTitle(`Vol. 1 Núm. ${(volumes.length || 1) + 1} (2026): Scientia Dentis - Innovación Estomatológica`);
+                  setNewVolVolumeNumber(1);
+                  setNewVolIssueNumber((volumes.length || 1) + 1);
+                  setNewVolYear(2026);
+                  setNewVolPublishedAt(new Date().toISOString().split('T')[0]);
+                  setNewVolTheme('Odontología Multidisciplinaria & Investigación Clínica');
+                  setNewVolInstitutionalPresentation(DEFAULT_INSTITUTIONAL_PRESENTATION);
+                  setNewVolIsCurrent(true);
+                  setCreateVolCoverFile(null);
+                  if (createVolCoverPreview) URL.revokeObjectURL(createVolCoverPreview);
+                  setCreateVolCoverPreview(null);
+                  setShowCreateVolModal(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-950/40 border border-cyan-400/40 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Crear Nuevo Volumen</span>
+              </button>
+
+              {onRefreshVolumes && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await onRefreshVolumes();
+                      showNotification('Volúmenes sincronizados desde Supabase.');
+                    } catch (e: any) {
+                      showNotification('Error al sincronizar volúmenes: ' + e.message, 'error');
+                    }
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white flex items-center gap-2 transition-all cursor-pointer"
+                  title="Sincronizar listado de volúmenes desde Supabase"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refrescar</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 1. Volume Switcher Strip (List of Registered Volumes) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-cyan-400" />
+                <h4 className="text-xs sm:text-sm font-semibold text-white uppercase tracking-wider font-mono">
+                  Fascículos Registrados en Supabase ({volumes.length})
+                </h4>
+              </div>
+              <span className="text-[11px] font-mono text-slate-400">
+                Seleccione para editar o conmutar el volumen activo
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {volumes.map((vol) => {
+                const isCurrentActive = Boolean(vol.isCurrent);
+                const isSelectedForEdit = vol.id === selectedVolId;
+
+                return (
+                  <div
+                    key={vol.id}
+                    onClick={() => setSelectedVolId(vol.id)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between gap-3 ${
+                      isSelectedForEdit
+                        ? 'bg-slate-800/90 border-cyan-400/60 shadow-lg shadow-cyan-950/40 ring-1 ring-cyan-400/40'
+                        : 'bg-slate-950/50 border-white/10 hover:border-white/25 hover:bg-slate-900/60'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-[10px] font-mono uppercase font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+                          Vol. {vol.volumeNumber} · Núm. {vol.issueNumber} ({vol.year})
+                        </span>
+
+                        {isCurrentActive ? (
+                          <span className="inline-flex items-center gap-1.5 text-[9px] font-mono uppercase font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>Activo en Portada</span>
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-mono text-slate-500">
+                            Fascículo Histórico
+                          </span>
+                        )}
+                      </div>
+
+                      <h5 className="font-serif text-sm font-bold text-white line-clamp-2 leading-snug">
+                        {vol.title}
+                      </h5>
+
+                      <p className="text-[11px] text-slate-400 font-mono mt-1 flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3 text-slate-500" />
+                        <span>Publicado: {vol.publishedAt}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                      {!isCurrentActive ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSwitchActiveVolume(vol.id);
+                          }}
+                          disabled={isSavingVolume}
+                          className="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>Activar en Portada</span>
+                        </button>
+                      ) : (
+                        <div className="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono text-center font-bold">
+                          ✓ Portada Principal Actual
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedVolId(vol.id);
+                        }}
+                        className={`py-1.5 px-3 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                          isSelectedForEdit
+                            ? 'bg-cyan-600 text-white border-cyan-400 shadow-sm'
+                            : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                        }`}
+                      >
+                        {isSelectedForEdit ? 'Editando' : 'Editar'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Main Editor Panel for Selected Volume */}
+          {currentSelectedVol && (
+            <div className="bg-slate-950/60 rounded-3xl border border-white/15 p-6 sm:p-8 backdrop-blur-xl space-y-6">
+              
+              {/* Card Subheader */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shrink-0">
+                    <Edit3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-serif text-lg font-bold text-white">
+                        Editor del Volumen: Vol. {currentSelectedVol.volumeNumber} Núm. {currentSelectedVol.issueNumber} ({currentSelectedVol.year})
+                      </h4>
+                      {currentSelectedVol.isCurrent && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                          Activo en Portada
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 font-mono">ID: {currentSelectedVol.id}</p>
+                  </div>
+                </div>
+
+                {!currentSelectedVol.isCurrent && (
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchActiveVolume(currentSelectedVol.id)}
+                    disabled={isSavingVolume}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-200 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Establecer como Portada Activa</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Form Layout: 2 Columns */}
+              <form onSubmit={handleSaveVolumeDetails} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* Left Column: Cover Image Management (4 cols) */}
+                <div className="lg:col-span-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-cyan-400" />
+                    <h5 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
+                      Portada Principal del Volumen
+                    </h5>
+                  </div>
+
+                  {/* 3D Preview Frame of Volume Cover */}
+                  <div className="relative group mx-auto max-w-[260px] aspect-[3/4] rounded-2xl overflow-hidden border-2 border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(6,182,212,0.15)] bg-slate-900">
+                    <img 
+                      src={newVolCoverPreview || resolveVolumeCover(currentSelectedVol.id, currentSelectedVol.coverImage)} 
+                      alt={`Portada ${currentSelectedVol.title}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
+
+                    {/* Gradient Overlay & Tag */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40 pointer-events-none" />
+                    
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-[10px] font-mono">
+                      <span className="bg-slate-950/80 px-2 py-0.5 rounded-full border border-cyan-400/40 text-cyan-300 font-bold">
+                        {newVolCoverPreview ? 'Nueva Portada (Sin Guardar)' : 'Portada Actual'}
+                      </span>
+                    </div>
+
+                    <div className="absolute bottom-3 left-3 right-3 text-left p-2.5 rounded-xl bg-slate-950/80 backdrop-blur-md border border-white/10">
+                      <p className="text-[10px] font-mono text-cyan-400 uppercase font-bold">Scientia Dentis</p>
+                      <p className="text-xs text-white font-medium truncate mt-0.5">{volTitle}</p>
+                    </div>
+                  </div>
+
+                  {/* Cover Upload Controls */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-slate-300">
+                      Cambiar Imagen de Portada:
+                    </label>
+
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                        onChange={handleVolCoverChange}
+                        id="vol-cover-file-input"
+                        className="hidden"
+                      />
+                      <label 
+                        htmlFor="vol-cover-file-input"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/30 text-cyan-300 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-inner"
+                      >
+                        <UploadCloud className="w-4 h-4 text-cyan-400" />
+                        <span>Seleccionar archivo (.png, .jpg, .webp)</span>
+                      </label>
+                    </div>
+
+                    {newVolCoverFile && (
+                      <div className="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-between text-xs text-cyan-200">
+                        <div className="truncate mr-2">
+                          <span className="block font-semibold truncate">{newVolCoverFile.name}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {(newVolCoverFile.size / 1024 / 1024).toFixed(2)} MB · Listo para subir a Supabase
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewVolCoverFile(null);
+                            if (newVolCoverPreview) URL.revokeObjectURL(newVolCoverPreview);
+                            setNewVolCoverPreview(null);
+                          }}
+                          className="p-1 hover:bg-white/10 rounded-lg text-rose-300 transition-colors"
+                          title="Descartar imagen seleccionada"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-slate-400 leading-tight">
+                      La imagen seleccionada se subirá automáticamente a Supabase Storage en el bucket público <strong className="text-slate-300">published_articles</strong> o <strong className="text-slate-300">covers</strong> bajo la ruta <code className="text-cyan-300 font-mono text-[10px]">volumes/{currentSelectedVol.id}_cover_...</code> y actualizará el campo <code className="text-cyan-300 font-mono text-[10px]">cover_image</code> en la tabla <strong className="text-slate-300">public.volumes</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Column: Institutional Presentation & Metadata (8 cols) */}
+                <div className="lg:col-span-8 space-y-5">
+                  
+                  {/* Institutional Presentation Section */}
+                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Landmark className="w-4 h-4 text-cyan-400" />
+                        <label className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                          Presentación Institucional del Volumen
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setVolInstitutionalPresentation(DEFAULT_INSTITUTIONAL_PRESENTATION)}
+                        className="text-[11px] text-cyan-400 hover:text-cyan-300 underline font-mono cursor-pointer self-start sm:self-auto"
+                      >
+                        Restablecer texto oficial COLP
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Este texto se renderiza de forma dinámica y reactiva en el nuevo recuadro <strong className="text-white">"Presentación Institucional"</strong> del Hero en la portada principal (<code className="text-cyan-300 font-mono text-[10px]">CoverHero.tsx</code>).
+                    </p>
+
+                    <textarea
+                      rows={6}
+                      value={volInstitutionalPresentation}
+                      onChange={(e) => setVolInstitutionalPresentation(e.target.value)}
+                      placeholder="Redacte aquí el mensaje editorial o presentación institucional para este fascículo..."
+                      className="w-full px-4 py-3 bg-slate-900 border border-white/15 rounded-xl text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all font-sans leading-relaxed resize-y"
+                    />
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                      <span>Caracteres: {volInstitutionalPresentation.length}</span>
+                      <span>Palabras: {volInstitutionalPresentation.trim().split(/\s+/).filter(Boolean).length}</span>
+                    </div>
+                  </div>
+
+                  {/* Volume Metadata Grid */}
+                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-cyan-400" />
+                      <h5 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                        Datos del Fascículo & Fecha de Publicación
+                      </h5>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Fecha de Publicación */}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Fecha de Publicación (published_at):</span>
+                        </label>
+                        <input 
+                          type="date"
+                          value={volPublishedAt}
+                          onChange={(e) => setVolPublishedAt(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-400 transition-all font-mono"
+                          required
+                        />
+                      </div>
+
+                      {/* Enfoque Temático */}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                          Enfoque Temático / Monografía:
+                        </label>
+                        <input 
+                          type="text"
+                          value={volTheme}
+                          onChange={(e) => setVolTheme(e.target.value)}
+                          placeholder="Ej: Implantología & Cirugía Tisular"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all"
+                        />
+                      </div>
+
+                      {/* Título Oficial */}
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                          Título Oficial del Fascículo:
+                        </label>
+                        <input 
+                          type="text"
+                          value={volTitle}
+                          onChange={(e) => setVolTitle(e.target.value)}
+                          placeholder="Vol. 1 Núm. 1 (2026): Scientia Dentis - Revista Científica Oficial"
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all font-serif font-semibold"
+                          required
+                        />
+                      </div>
+
+                      {/* Números: Vol, Núm, Año */}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                          Número de Volumen:
+                        </label>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={volVolumeNumber}
+                          onChange={(e) => setVolVolumeNumber(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-400 transition-all font-mono"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                            Número / Fascículo:
+                          </label>
+                          <input 
+                            type="number"
+                            min="1"
+                            value={volIssueNumber}
+                            onChange={(e) => setVolIssueNumber(Number(e.target.value))}
+                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-400 transition-all font-mono"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                            Año (Year):
+                          </label>
+                          <input 
+                            type="number"
+                            min="2020"
+                            max="2035"
+                            value={volYear}
+                            onChange={(e) => setVolYear(Number(e.target.value))}
+                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-400 transition-all font-mono"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Submit Button & Progress State */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
+                    <div className="text-xs text-slate-400">
+                      {isSavingVolume && (
+                        <div className="flex items-center gap-2 text-cyan-300">
+                          <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                          <span>{volSavingProgress || 'Guardando cambios en Supabase...'}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSavingVolume}
+                      className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs sm:text-sm shadow-xl shadow-cyan-950/50 border border-cyan-400/40 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      {isSavingVolume ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Guardando en Supabase...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Guardar Cambios en Supabase</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Modal: Crear Nuevo Volumen */}
+          {showCreateVolModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl fade-in overflow-y-auto">
+              <div 
+                className="bg-slate-900 border border-cyan-500/40 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl relative space-y-6 my-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-950/90 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shadow-md">
+                      <PlusCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-serif text-lg sm:text-xl font-bold text-white">
+                        Crear Nuevo Volumen / Fascículo
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        Registrar una nueva edición semestral en la tabla <code className="text-cyan-300 font-mono text-[10px]">public.volumes</code> de Supabase.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCreateVolModal(false)}
+                    className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleCreateNewVolumeSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* ID */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-1.5">
+                        Identificador ID Único (slug):
+                      </label>
+                      <input 
+                        type="text"
+                        value={newVolId}
+                        onChange={(e) => setNewVolId(e.target.value)}
+                        placeholder="v1n2"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-cyan-400"
+                        required
+                      />
+                    </div>
+
+                    {/* Fecha de Publicación */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-1.5 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Fecha de Publicación:</span>
+                      </label>
+                      <input 
+                        type="date"
+                        value={newVolPublishedAt}
+                        onChange={(e) => setNewVolPublishedAt(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/15 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-400"
+                        required
+                      />
+                    </div>
+
+                    {/* Título Completo */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-1.5">
+                        Título Completo del Volumen:
+                      </label>
+                      <input 
+                        type="text"
+                        value={newVolTitle}
+                        onChange={(e) => setNewVolTitle(e.target.value)}
+                        placeholder="Vol. 1 Núm. 2 (2026): Scientia Dentis - Innovación Estomatológica"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 font-serif font-semibold focus:outline-none focus:border-cyan-400"
+                        required
+                      />
+                    </div>
+
+                    {/* Volumen, Número, Año */}
+                    <div className="grid grid-cols-3 gap-2 sm:col-span-2">
+                      <div>
+                        <label className="block text-[11px] font-mono text-slate-300 mb-1">Volumen:</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={newVolVolumeNumber}
+                          onChange={(e) => setNewVolVolumeNumber(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white font-mono"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-mono text-slate-300 mb-1">Número:</label>
+                        <input 
+                          type="number"
+                          min="1"
+                          value={newVolIssueNumber}
+                          onChange={(e) => setNewVolIssueNumber(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white font-mono"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-mono text-slate-300 mb-1">Año:</label>
+                        <input 
+                          type="number"
+                          min="2020"
+                          value={newVolYear}
+                          onChange={(e) => setNewVolYear(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-white font-mono"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Enfoque Temático */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-1.5">
+                        Enfoque Temático:
+                      </label>
+                      <input 
+                        type="text"
+                        value={newVolTheme}
+                        onChange={(e) => setNewVolTheme(e.target.value)}
+                        placeholder="Odontología Multidisciplinaria & Investigación Clínica"
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/15 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    {/* Subida de Portada */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-1.5">
+                        Imagen de Portada (.png, .jpg, .webp):
+                      </label>
+                      <input 
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                        onChange={handleCreateVolCoverChange}
+                        className="w-full px-3.5 py-2 bg-slate-950 border border-white/15 rounded-xl text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white file:text-xs"
+                      />
+                      {createVolCoverPreview && (
+                        <div className="mt-2 flex items-center gap-3 p-2 bg-slate-950 rounded-xl border border-cyan-500/30">
+                          <img src={createVolCoverPreview} alt="Preview" className="w-12 h-16 object-cover rounded-lg" />
+                          <span className="text-xs text-cyan-300 font-mono">Vista previa de portada lista</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Presentación Institucional */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-mono uppercase text-slate-300 mb-1.5">
+                        Presentación Institucional del Volumen:
+                      </label>
+                      <textarea 
+                        rows={4}
+                        value={newVolInstitutionalPresentation}
+                        onChange={(e) => setNewVolInstitutionalPresentation(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/15 rounded-xl text-xs text-white leading-relaxed resize-y focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    {/* Checkbox is_current */}
+                    <div className="sm:col-span-2 flex items-center gap-2.5 p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/30">
+                      <input 
+                        type="checkbox"
+                        id="new-vol-is-current"
+                        checked={newVolIsCurrent}
+                        onChange={(e) => setNewVolIsCurrent(e.target.checked)}
+                        className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-900 border-white/20"
+                      />
+                      <label htmlFor="new-vol-is-current" className="text-xs text-cyan-200 font-medium cursor-pointer">
+                        Establecer de inmediato como el volumen activo de la revista (is_current = true en la portada)
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateVolModal(false)}
+                      disabled={isCreatingVol}
+                      className="px-4 py-2.5 rounded-xl border border-white/15 hover:bg-white/5 text-slate-300 text-xs font-semibold cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={isCreatingVol}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-950/40 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isCreatingVol ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>{createVolProgress || 'Creando en Supabase...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Crear y Publicar Fascículo en Supabase</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* TAB 1: GESTIÓN DE USUARIOS Y CUENTAS OFICIALES                            */}
       {/* ========================================================================= */}
       {activeTab === 'users' && (
@@ -1323,6 +2482,15 @@ export default function SuperAdminCMS({
 
             <div className="flex items-center gap-2 shrink-0">
               <button
+                onClick={handleRefreshEditorialMembers}
+                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Sincronizar consejo editorial directamente desde Supabase"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Sincronizar Supabase</span>
+              </button>
+
+              <button
                 onClick={handleResetEditorialBoard}
                 className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Restablecer a los integrantes iniciales COLP"
@@ -1448,8 +2616,202 @@ export default function SuperAdminCMS({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB: BASES DE DATOS & SISTEMAS DE INDEXACIÓN (CMS SUPER ADMIN EXCLUSIVE) */}
+      {/* TAB: GESTIÓN DE PARTNERS & AUSPICIADORES (CONECTADO A SUPABASE)          */}
       {/* ========================================================================= */}
+      {activeTab === 'partners' && (
+        <div className="bg-slate-900/60 border border-white/10 rounded-3xl p-6 sm:p-7 backdrop-blur-md space-y-6" id="cms-partners-panel">
+          
+          {/* Header Strip */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-950/80 border border-teal-500/40 text-teal-300 text-xs font-mono mb-2 shadow-xs">
+                <Handshake className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Módulo Editorial CMS · public.partners en Supabase</span>
+              </div>
+              <h3 className="font-serif text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                <span>Gestión de Partners & Auspiciadores Estratégicos</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Administre los logos institucionales, universidades colaboradoras y casas comerciales que respaldan a Scientia Dentis. Todos los cambios se guardan directamente en Supabase y se exhiben en la vista "Partners".
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={fetchCmsPartners}
+                disabled={isLoadingPartners}
+                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                title="Sincronizar listado de partners desde Supabase"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${isLoadingPartners ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Sincronizar Supabase</span>
+              </button>
+
+              <button
+                onClick={handleOpenAddPartner}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 hover:from-teal-500 hover:to-cyan-500 text-white font-semibold text-xs shadow-lg shadow-teal-950/50 border border-teal-400/40 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Registrar Partner</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex items-center gap-2 pt-1 border-t border-white/5 text-xs">
+            <span className="text-slate-400 font-mono text-[11px]">Filtrar:</span>
+            <button
+              onClick={() => setPartnerFilterCategory('all')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-xs ${
+                partnerFilterCategory === 'all'
+                  ? 'bg-teal-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-white bg-slate-950 border border-white/10'
+              }`}
+            >
+              Todos ({partnersList.length})
+            </button>
+            <button
+              onClick={() => setPartnerFilterCategory('Institucional')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-xs ${
+                partnerFilterCategory === 'Institucional'
+                  ? 'bg-teal-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-white bg-slate-950 border border-white/10'
+              }`}
+            >
+              Institucionales ({partnersList.filter(p => (p.category || 'Institucional').includes('Institucional')).length})
+            </button>
+            <button
+              onClick={() => setPartnerFilterCategory('Académico')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-xs ${
+                partnerFilterCategory === 'Académico'
+                  ? 'bg-teal-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-white bg-slate-950 border border-white/10'
+              }`}
+            >
+              Académicos ({partnersList.filter(p => (p.category || '').includes('Académico')).length})
+            </button>
+            <button
+              onClick={() => setPartnerFilterCategory('Auspiciador')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer text-xs ${
+                partnerFilterCategory === 'Auspiciador'
+                  ? 'bg-teal-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-white bg-slate-950 border border-white/10'
+              }`}
+            >
+              Auspiciadores Comerciales ({partnersList.filter(p => (p.category || '').includes('Auspiciador')).length})
+            </button>
+          </div>
+
+          {/* Partners Grid in CMS */}
+          {isLoadingPartners && partnersList.length === 0 ? (
+            <div className="py-16 text-center space-y-3">
+              <RefreshCw className="w-8 h-8 animate-spin text-teal-400 mx-auto" />
+              <p className="text-xs font-mono text-slate-400">Consultando tabla public.partners en Supabase...</p>
+            </div>
+          ) : partnersList.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl border border-dashed border-white/10 bg-slate-950/40 space-y-4">
+              <Handshake className="w-12 h-12 text-slate-600 mx-auto" />
+              <div className="space-y-1">
+                <h4 className="font-serif text-lg font-bold text-white">No hay partners registrados aún</h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Agregue el primer partner o auspiciador comercial para exhibirlo en la vista pública de Scientia Dentis.
+                </p>
+              </div>
+              <button
+                onClick={handleOpenAddPartner}
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold inline-flex items-center gap-2 cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Registrar Primer Partner</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {partnersList
+                .filter(p => {
+                  if (partnerFilterCategory === 'all') return true;
+                  return (p.category || 'Institucional').toLowerCase().includes(partnerFilterCategory.toLowerCase());
+                })
+                .map((partner) => (
+                  <div
+                    key={partner.id}
+                    className="p-5 rounded-2xl border border-white/10 bg-slate-950/60 hover:border-teal-500/40 transition-all flex flex-col justify-between group relative overflow-hidden"
+                  >
+                    <div>
+                      {/* Logo Preview Frame */}
+                      <div className="w-full h-32 rounded-xl bg-slate-900 border border-white/5 p-4 flex items-center justify-center relative overflow-hidden mb-3.5">
+                        <img 
+                          src={partner.logo_url} 
+                          alt={partner.name}
+                          className="max-h-20 max-w-[85%] object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/colp_logo.png';
+                          }}
+                        />
+                        <span className="absolute top-2 right-2 text-[9px] font-mono font-bold bg-slate-950/80 px-2 py-0.5 rounded-md border border-white/10 text-slate-400">
+                          #{partner.order_index ?? 1}
+                        </span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-teal-400 font-bold px-2 py-0.5 rounded-full bg-teal-950/60 border border-teal-500/30">
+                            {partner.category || 'Institucional'}
+                          </span>
+                        </div>
+
+                        <h5 className="font-serif font-bold text-white text-sm mt-1 line-clamp-2">
+                          {partner.name}
+                        </h5>
+
+                        {partner.website_url ? (
+                          <a
+                            href={partner.website_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 truncate block flex items-center gap-1"
+                          >
+                            <Globe2 className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{partner.website_url.replace(/^https?:\/\//, '')}</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] font-mono text-slate-600 block">Sin enlace web registrado</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                      <span className="text-[10px] font-mono text-slate-500">
+                        ID: {partner.id.substring(0, 8)}...
+                      </span>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditPartner(partner)}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer"
+                          title="Editar partner"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-teal-400" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePartner(partner.id, partner.name)}
+                          className="p-1.5 rounded-lg bg-red-950/30 hover:bg-red-950/70 text-red-300 hover:text-red-200 transition-all cursor-pointer"
+                          title="Eliminar partner de Supabase"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                ))}
+            </div>
+          )}
+
+        </div>
+      )}
       {activeTab === 'indexing' && (
         <div className="bg-slate-900/60 border border-white/10 rounded-3xl p-6 sm:p-7 backdrop-blur-md space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
@@ -1993,9 +3355,181 @@ export default function SuperAdminCMS({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-md cursor-pointer"
+                  disabled={isSavingMember}
+                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  {editingMemberId ? 'Guardar Cambios' : 'Agregar al Comité'}
+                  {isSavingMember ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Guardando en Supabase...</span>
+                    </>
+                  ) : (
+                    <span>{editingMemberId ? 'Guardar Cambios en Supabase' : 'Agregar al Comité en Supabase'}</span>
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: REGISTRAR O EDITAR PARTNER / AUSPICIADOR (SUPABASE)                */}
+      {/* ========================================================================= */}
+      {showPartnerModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md fade-in overflow-y-auto"
+          onClick={() => setShowPartnerModal(false)}
+        >
+          <div 
+            className="relative w-full max-w-lg bg-slate-900 border border-teal-500/40 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-4 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Handshake className="w-5 h-5 text-teal-400" />
+                <h4 className="font-serif text-lg font-bold text-white">
+                  {editingPartnerId ? 'Editar Partner Estratégico' : 'Registrar Nuevo Partner'}
+                </h4>
+              </div>
+              <button
+                onClick={() => setShowPartnerModal(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePartnerSubmit} className="space-y-4">
+              
+              {/* Nombre de la institución/empresa */}
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">
+                  Nombre de la Institución o Empresa *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partnerName}
+                  onChange={(e) => setPartnerName(e.target.value)}
+                  placeholder="Ej. Straumann LatAm / Facultad de Odontología UMSA"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:border-teal-400"
+                />
+              </div>
+
+              {/* Categoría */}
+              <div>
+                <label className="block text-xs font-mono text-slate-300 mb-1">
+                  Categoría del Partner
+                </label>
+                <select
+                  value={partnerCategory}
+                  onChange={(e) => setPartnerCategory(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-teal-400"
+                >
+                  <option value="Institucional">Institucional (Colegios & Asociaciones)</option>
+                  <option value="Académico">Académico (Universidades & Sociedades)</option>
+                  <option value="Auspiciador Comercial">Auspiciador Comercial (Casas Dentales / Industria)</option>
+                </select>
+              </div>
+
+              {/* Subida de archivo de logo */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono text-slate-300">
+                  Logo del Partner (.png, .svg, .jpg, .webp)
+                </label>
+                
+                <div className="flex items-center gap-4">
+                  {/* Vista previa */}
+                  <div className="w-20 h-20 rounded-xl bg-slate-950 border border-white/10 flex items-center justify-center p-2 overflow-hidden shrink-0">
+                    <img 
+                      src={partnerLogoPreview || partnerLogoUrl || '/colp_logo.png'} 
+                      alt="Logo preview"
+                      className="max-h-16 max-w-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/colp_logo.png';
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    <input 
+                      type="file"
+                      id="partner-logo-input"
+                      accept="image/png,image/svg+xml,image/jpeg,image/webp"
+                      onChange={handlePartnerLogoChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="partner-logo-input"
+                      className="px-3 py-2 rounded-xl border border-dashed border-teal-500/40 hover:border-teal-400 bg-teal-950/20 text-teal-300 text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <UploadCloud className="w-4 h-4" />
+                      <span>{partnerLogoFile ? partnerLogoFile.name : 'Subir archivo de logo'}</span>
+                    </label>
+
+                    <input
+                      type="text"
+                      value={partnerLogoUrl}
+                      onChange={(e) => setPartnerLogoUrl(e.target.value)}
+                      placeholder="O ingrese URL pública de logo"
+                      className="w-full px-3 py-1.5 bg-slate-950 border border-white/10 rounded-lg text-[11px] text-slate-300 placeholder-slate-600 focus:outline-none focus:border-teal-400 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sitio web y Orden */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-mono text-slate-300 mb-1">
+                    Sitio Web / Red Social (Opcional)
+                  </label>
+                  <input
+                    type="url"
+                    value={partnerWebsiteUrl}
+                    onChange={(e) => setPartnerWebsiteUrl(e.target.value)}
+                    placeholder="https://empresa.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-teal-400 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">
+                    Orden
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={partnerOrderIndex}
+                    onChange={(e) => setPartnerOrderIndex(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-teal-400 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowPartnerModal(false)}
+                  className="px-4 py-2 rounded-xl border border-white/10 text-xs text-slate-300 hover:text-white cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingPartner}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs shadow-md cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSavingPartner ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Guardando en Supabase...</span>
+                    </>
+                  ) : (
+                    <span>{editingPartnerId ? 'Guardar Cambios en Supabase' : 'Registrar en Supabase'}</span>
+                  )}
                 </button>
               </div>
 
