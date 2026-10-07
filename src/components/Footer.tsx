@@ -7,10 +7,10 @@ import ColpLogo from './ColpLogo';
 interface FooterProps {
   journalInfo: JournalConfig;
   onOpenModal: (modal: InstitutionalModalType) => void;
-  onResetDemo: () => void;
+  onResetDemo?: () => void;
 }
 
-export default function Footer({ journalInfo, onOpenModal, onResetDemo }: FooterProps) {
+export default function Footer({ journalInfo, onOpenModal }: FooterProps) {
   return (
     <footer className="bg-slate-950 text-slate-300 border-t border-slate-800 shrink-0 mt-16" id="app-footer">
       
@@ -161,17 +161,6 @@ export default function Footer({ journalInfo, onOpenModal, onResetDemo }: Footer
                   +591 (2) 2444004
                 </a>
               </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                onClick={onResetDemo}
-                id="footer-reset-demo-btn"
-                className="text-[11px] text-teal-400 hover:text-teal-300 font-mono underline decoration-dotted cursor-pointer flex items-center gap-1.5"
-                title="Restaura la base de datos simulada OJS a los datos de fábrica"
-              >
-                <span>Restaurar datos simulados de prueba OJS</span>
-              </button>
             </div>
           </div>
 

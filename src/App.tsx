@@ -423,13 +423,6 @@ export default function App() {
     setSelectedArticleForReader(article);
   };
 
-  // Reload real Supabase data
-  const handleResetDemo = async () => {
-    if (confirm('¿Desea recargar los datos directamente desde Supabase?')) {
-      await handleRefreshArticles();
-    }
-  };
-
   // Published articles and active volume directly from Supabase state
   const publishedArticles = articles.filter(a => a.status === 'published');
   const currentVolume = volumes.find(v => v.isCurrent) || volumes[0] || INITIAL_VOLUMES[0];
@@ -633,7 +626,6 @@ export default function App() {
         <Footer 
           journalInfo={JOURNAL_INFO}
           onOpenModal={setActiveModal}
-          onResetDemo={handleResetDemo}
         />
       </div>
 
