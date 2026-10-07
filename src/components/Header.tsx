@@ -107,13 +107,13 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-3 sm:top-4 z-50 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full" id="app-header">
+    <header className="sticky top-3 sm:top-4 z-50 mx-auto max-w-7xl px-4 w-full" id="app-header">
       
       {/* Floating Island Container with Glassmorphism and Volumetric Edge */}
-      <div className="backdrop-blur-2xl bg-slate-950/85 border border-white/10 rounded-2xl shadow-[0_10px_35px_-5px_rgba(0,0,0,0.85),0_0_20px_rgba(6,182,212,0.08)] ring-1 ring-white/5 transition-all">
+      <div className="backdrop-blur-md bg-slate-950/80 border border-slate-800 rounded-2xl shadow-[0_10px_35px_-5px_rgba(0,0,0,0.85),0_0_20px_rgba(6,182,212,0.08)] ring-1 ring-white/5 transition-all">
         
         {/* Main Header Row */}
-        <div className="px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-4 lg:gap-6 min-w-0">
+        <div className="flex items-center justify-between w-full px-4 sm:px-6 py-2.5 gap-2 sm:gap-4">
           
           {/* Brand Wordmark & Official Seal */}
           <div 
@@ -152,11 +152,11 @@ export default function Header({
           </div>
 
           {/* Center Navigation Links (Harmonious & Responsive Spacing) */}
-          <nav className="hidden lg:flex items-center gap-2 xl:gap-3.5 text-xs font-medium text-slate-300">
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-2 text-xs md:text-sm font-medium text-slate-300 shrink">
             <button
               onClick={onNavigateHome}
               className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                currentRole === 'reader'
+                currentRole === 'reader' && currentView === 'home'
                   ? 'bg-white/10 text-white shadow-xs font-semibold' 
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
@@ -165,18 +165,14 @@ export default function Header({
             </button>
             <button
               onClick={onNavigateCurrentIssue}
-              className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                currentRole === 'reader' && currentView === 'home'
-                  ? 'text-slate-400 hover:text-white hover:bg-white/5'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
+              className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5"
             >
               Edición Actual
             </button>
             <button
               onClick={onNavigatePartners}
               className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                currentRole === 'reader' && currentView === 'partners'
+                currentView === 'partners'
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-xs font-semibold'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
@@ -196,23 +192,11 @@ export default function Header({
             >
               Comité Editorial
             </button>
-            
-            <button
-              onClick={handleAuthorAction}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                currentRole === 'author' 
-                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 font-semibold' 
-                  : 'text-teal-400 hover:bg-teal-500/10'
-              }`}
-            >
-              <PenTool className="w-3.5 h-3.5" />
-              <span>Enviar Manuscrito</span>
-            </button>
 
             {currentUser?.role === 'superadmin' && (
               <button
                 onClick={() => onChangeRole('superadmin')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   currentRole === 'superadmin'
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-semibold'
                     : 'text-purple-400 hover:bg-purple-500/10'
@@ -225,7 +209,7 @@ export default function Header({
           </nav>
 
           {/* Right Utility: Authentication / User Island / CMS Access */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Authenticated User Session / Login Button */}
             {currentUser ? (
               <div className="relative">
@@ -357,20 +341,20 @@ export default function Header({
               </div>
             ) : (
               /* Public / Guest Auth Buttons */
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
                 <button
                   onClick={() => onOpenAuthModal('login')}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-white/10 hover:border-cyan-400/40 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                  className="px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/70 transition-all border border-slate-700/70 hover:border-slate-600 cursor-pointer flex items-center gap-1.5 whitespace-nowrap active:scale-95"
                 >
                   <LogIn className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="hidden sm:inline">Iniciar Sesión</span>
+                  <span>Iniciar Sesión</span>
                 </button>
 
                 <button
                   onClick={() => onOpenAuthModal('register')}
-                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-cyan-950/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 whitespace-nowrap"
+                  className="px-3.5 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-teal-400 hover:opacity-95 shadow-sm shadow-cyan-950/40 transition-all shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-95 whitespace-nowrap"
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
+                  <UserPlus className="w-3.5 h-3.5 text-slate-950" />
                   <span>Crear Cuenta</span>
                 </button>
               </div>
@@ -425,15 +409,6 @@ export default function Header({
               </button>
               <button
                 onClick={() => {
-                  handleAuthorAction();
-                  setMobileMenuOpen(false);
-                }}
-                className="p-2.5 rounded-xl text-left bg-teal-500/20 text-teal-300 border border-teal-500/30 cursor-pointer font-semibold"
-              >
-                Enviar Artículo
-              </button>
-              <button
-                onClick={() => {
                   onOpenModal('guidelines');
                   setMobileMenuOpen(false);
                 }}
@@ -446,7 +421,7 @@ export default function Header({
                   onOpenModal('about');
                   setMobileMenuOpen(false);
                 }}
-                className="p-2.5 rounded-xl text-left bg-white/5 hover:bg-white/10 text-white cursor-pointer"
+                className="p-2.5 rounded-xl text-left bg-white/5 hover:bg-white/10 text-white cursor-pointer col-span-2 sm:col-span-1"
               >
                 Comité Editorial
               </button>

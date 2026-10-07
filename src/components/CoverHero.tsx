@@ -811,7 +811,13 @@ export default function CoverHero({
                   <div
                     key={`${article.id}-${index}`}
                     onClick={() => onSelectArticle && onSelectArticle(article)}
-                    className="group cursor-pointer shrink-0 w-64 sm:w-72 bg-slate-900/80 hover:bg-slate-800/90 border border-white/10 hover:border-cyan-400/60 rounded-2xl p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_30px_-8px_rgba(6,182,212,0.35)] backdrop-blur-md flex flex-col text-left"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (onSelectArticle) onSelectArticle(article);
+                      }
+                    }}
+                    className="group cursor-pointer shrink-0 w-64 sm:w-72 bg-slate-900/80 hover:bg-slate-800/90 border border-white/10 hover:border-cyan-400/60 rounded-2xl p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_30px_-8px_rgba(6,182,212,0.35)] backdrop-blur-md flex flex-col text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                     role="button"
                     tabIndex={0}
                     aria-label={`Ver artículo: ${article.title}`}

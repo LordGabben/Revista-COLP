@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Filter, BookOpen, Calendar, ChevronRight, FileText, Download, Tag, Award, Users, ExternalLink, HelpCircle, FileCheck2, Sparkles, ShieldCheck, Image, Paperclip, Check, Clock, Eye, Archive, X } from 'lucide-react';
 import { Article, Volume, InstitutionalModalType } from '../types';
 import { DENTAL_CATEGORIES, JOURNAL_INFO, INITIAL_VOLUMES } from '../data';
@@ -41,6 +42,26 @@ export default function ReaderView({
       setSelectedTab('abstract');
     }
   }, [externalSelectedArticle]);
+
+  // Lock body scroll and handle Escape key when modal is open
+  useEffect(() => {
+    if (selectedArticle) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          handleCloseModal();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalOverflow || 'unset';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [selectedArticle]);
 
   useEffect(() => {
     if (externalSearchQuery !== undefined) {
@@ -521,10 +542,21 @@ export default function ReaderView({
         </div>
       </div>
 
-      {/* ARTICLE READER MODAL (Classic OJS Layout) */}
-      {selectedArticle && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4" id="article-modal">
-          <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200">
+      {/* ARTICLE READER MODAL (Classic OJS Layout with Portal directly into document.body) */}
+      {selectedArticle && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 transition-all animate-in fade-in duration-200" 
+          id="article-modal"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleCloseModal();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200 my-auto animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="bg-slate-900 text-white p-5 flex justify-between items-start shrink-0">
               <div className="space-y-1.5">
@@ -1036,16 +1068,17 @@ export default function ReaderView({
 
             {/* Modal Footer */}
             <div className="bg-slate-50 border-t border-slate-200 px-5 py-4 flex justify-between items-center shrink-0">
-              <span className="text-xs text-slate-500 font-mono">CC BY-NC-ND 4.0 Internacioanal</span>
+              <span className="text-xs text-slate-500 font-mono">CC BY-NC-ND 4.0 Internacional</span>
               <button 
-                onClick={() => setSelectedArticle(null)}
+                onClick={handleCloseModal}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-950 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors"
               >
                 Cerrar Artículo
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
