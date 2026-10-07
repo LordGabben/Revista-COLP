@@ -47,15 +47,18 @@ export default function EditorDashboard({
   const [dpAbstract, setDpAbstract] = useState('');
   const [dpCategory, setDpCategory] = useState(DENTAL_CATEGORIES[0] || 'Implantología Oral');
   const [dpKeywords, setDpKeywords] = useState('');
-  const [dpVolumeId, setDpVolumeId] = useState(volumes[0]?.id || 'v12n2');
+  const [dpVolumeId, setDpVolumeId] = useState(volumes[0]?.id || 'v1n1');
   const [dpCustomDoi, setDpCustomDoi] = useState('');
   const [dpPdfFile, setDpPdfFile] = useState<File | null>(null);
+  const [dpCoverImageFile, setDpCoverImageFile] = useState<File | null>(null);
+  const [dpCoverImagePreview, setDpCoverImagePreview] = useState<string | null>(null);
   const [dpIsSubmitting, setDpIsSubmitting] = useState(false);
   const [dpProgressStatus, setDpProgressStatus] = useState('');
   const [dpProgressPercent, setDpProgressPercent] = useState(0);
   const [dpError, setDpError] = useState<string | null>(null);
   const [dpSuccessArticle, setDpSuccessArticle] = useState<Article | null>(null);
   const dpFileInputRef = useRef<HTMLInputElement>(null);
+  const dpCoverInputRef = useRef<HTMLInputElement>(null);
 
   // Grouping articles
   const submittedArticles = articles.filter(a => a.status === 'submitted');
@@ -197,6 +200,7 @@ export default function EditorDashboard({
         keywords: keywordsArr.length > 0 ? keywordsArr : ['Odontología', dpCategory],
         volumeId: dpVolumeId,
         pdfFile: dpPdfFile,
+        coverImageFile: dpCoverImageFile,
         doi: dpCustomDoi.trim() || undefined,
         onProgress: (status, percent) => {
           setDpProgressStatus(status);
@@ -215,6 +219,8 @@ export default function EditorDashboard({
         setDpAbstract('');
         setDpKeywords('');
         setDpPdfFile(null);
+        setDpCoverImageFile(null);
+        setDpCoverImagePreview(null);
       } else {
         setDpError(result.error || 'Error al publicar el artículo.');
       }
@@ -1014,6 +1020,90 @@ export default function EditorDashboard({
                       )}
                     </div>
                   </div>
+
+                  {/* Optional Cover Image Input for Mini Carousel */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">
+                        Imagen de Portada Ilustrativa del Artículo <span className="text-slate-400 font-normal">(Opcional)</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-brand-600 bg-brand-50 px-2 py-0.5 rounded">
+                        Mini Carrusel Hero
+                      </span>
+                    </div>
+
+                    <input
+                      ref={dpCoverInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                      onChange={(e) => {
+                        setDpError(null);
+                        if (e.target.files && e.target.files[0]) {
+                          const file = e.target.files[0];
+                          if (!file.type.startsWith('image/')) {
+                            setDpError('Seleccione una imagen válida (.jpg, .png, .webp).');
+                            return;
+                          }
+                          if (file.size > 5 * 1024 * 1024) {
+                            setDpError('La imagen de portada no debe exceder los 5 MB.');
+                            return;
+                          }
+                          setDpCoverImageFile(file);
+                          setDpCoverImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="hidden"
+                    />
+
+                    <div
+                      onClick={() => dpCoverInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all ${
+                        dpCoverImageFile
+                          ? 'border-cyan-500 bg-cyan-50/50'
+                          : 'border-slate-300 bg-slate-50 hover:border-brand-500 hover:bg-slate-100/50'
+                      }`}
+                    >
+                      {dpCoverImagePreview && dpCoverImageFile ? (
+                        <div className="flex items-center justify-between max-w-md mx-auto">
+                          <div className="flex items-center gap-3 text-left">
+                            <div className="w-12 h-12 rounded-xl overflow-hidden border border-brand-300 bg-white shrink-0 shadow-sm">
+                              <img
+                                src={dpCoverImagePreview}
+                                alt="Vista previa portada"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="truncate">
+                              <p className="font-bold text-slate-900 truncate text-xs">{dpCoverImageFile.name}</p>
+                              <p className="text-[10px] font-mono text-brand-600">{formatFileSize(dpCoverImageFile.size)} • Portada ilustrativa lista</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDpCoverImageFile(null);
+                              if (dpCoverImagePreview) URL.revokeObjectURL(dpCoverImagePreview);
+                              setDpCoverImagePreview(null);
+                            }}
+                            className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <Image className="w-7 h-7 text-brand-600 mx-auto" />
+                          <p className="text-xs font-bold text-slate-800">
+                            Haga clic para subir la imagen de portada (.jpg, .png, .webp)
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-sans">
+                            Máximo 5 MB. Si no se adjunta, se asignará automáticamente una portada científica elegante por defecto.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Progress bar */}
@@ -1067,7 +1157,7 @@ export default function EditorDashboard({
         isOpen={isDirectPublishModalOpen}
         onClose={() => setIsDirectPublishModalOpen(false)}
         volumes={volumes}
-        defaultVolumeId={volumes.find(v => v.isCurrent)?.id || 'v12n2'}
+        defaultVolumeId={volumes.find(v => v.isCurrent)?.id || 'v1n1'}
         onPublishSuccess={(newArticle) => {
           if (onDirectPublishSuccess) {
             onDirectPublishSuccess(newArticle);

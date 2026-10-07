@@ -1,7 +1,6 @@
 import React from 'react';
 import { BookOpen, MapPin, Mail, Phone, ExternalLink, ShieldCheck, Scale, FileText, Users, Award, HeartHandshake } from 'lucide-react';
 import { JournalConfig, InstitutionalModalType } from '../types';
-import { INDEXING_SYSTEMS } from '../data';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 import ColpLogo from './ColpLogo';
 
@@ -15,32 +14,6 @@ export default function Footer({ journalInfo, onOpenModal, onResetDemo }: Footer
   return (
     <footer className="bg-slate-950 text-slate-300 border-t border-slate-800 shrink-0 mt-16" id="app-footer">
       
-      {/* Upper Footer with Indexing Badges */}
-      <div className="border-b border-slate-900 bg-slate-900/60 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400 font-medium">Bases de Datos & Sistemas de Indexación:</span>
-            </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              {INDEXING_SYSTEMS.map((idx, i) => (
-                <button
-                  key={i}
-                  onClick={() => onOpenModal('about')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-[11px] text-slate-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-                  title={`${idx.name} - ${idx.status}: ${idx.description}`}
-                >
-                  <Award className="w-3 h-3 text-cyan-400" />
-                  <span className="font-semibold">{idx.name.split('(')[0]}</span>
-                  <span className="text-slate-400 text-[10px] hidden sm:inline">({idx.status.split(' ')[0]})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main 4-Column Institutional Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">

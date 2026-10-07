@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, BookOpen, Calendar, ChevronRight, FileText, Download, Tag, Award, Users, ExternalLink, HelpCircle, FileCheck2, Sparkles, ShieldCheck, Image, Paperclip, Check, Clock, Eye, Archive, X } from 'lucide-react';
 import { Article, Volume, InstitutionalModalType } from '../types';
-import { DENTAL_CATEGORIES, JOURNAL_INFO, INDEXING_SYSTEMS } from '../data';
+import { DENTAL_CATEGORIES, JOURNAL_INFO, INITIAL_VOLUMES } from '../data';
 
 interface ReaderViewProps {
   articles: Article[];
@@ -74,7 +74,7 @@ export default function ReaderView({
   };
 
   const publishedArticles = articles.filter(a => a.status === 'published');
-  const currentVolume = volumes.find(v => v.isCurrent) || volumes[0];
+  const currentVolume = volumes.find(v => v.isCurrent) || volumes[0] || INITIAL_VOLUMES[0];
 
   // Filter logic
   const filteredArticles = publishedArticles.filter(art => {
@@ -428,46 +428,6 @@ export default function ReaderView({
         {/* Sidebar: Volume Archives & Editorial policies */}
         <div className="lg:col-span-4 space-y-6">
           
-          {/* Scientific Indexing Card (Glassmorphic) */}
-          <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/10 space-y-4">
-            <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold block mb-1">
-                Garantías Institucionales COLP
-              </span>
-              <h4 className="font-serif font-bold text-lg text-white">Indexación y Calidad Científica</h4>
-              <p className="text-xs text-slate-400 mt-1">Criterios editoriales rigurosos evaluados por organismos internacionales:</p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
-              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
-                <span className="text-slate-400 block text-[10px]">Latindex 2.0</span>
-                <span className="font-bold text-cyan-400">Folio 29481</span>
-              </div>
-              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
-                <span className="text-slate-400 block text-[10px]">DOAJ</span>
-                <span className="font-bold text-cyan-400">Open Access</span>
-              </div>
-              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
-                <span className="text-slate-400 block text-[10px]">SciELO</span>
-                <span className="font-bold text-cyan-400">En Evaluación</span>
-              </div>
-              <div className="bg-slate-950/70 p-3 rounded-2xl border border-white/5">
-                <span className="text-slate-400 block text-[10px]">Google Scholar</span>
-                <span className="font-bold text-cyan-400">h5-index: 18</span>
-              </div>
-            </div>
-
-            {onOpenInstitutionalModal && (
-              <button
-                onClick={() => onOpenInstitutionalModal('about')}
-                className="w-full mt-2 py-2.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-cyan-300 hover:text-white rounded-xl transition-all font-medium cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <span>Ver Criterios e Indexación Completa</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
           {/* Historical Archives */}
           <div className="glass-card rounded-3xl p-6 shadow-xl border border-white/10">
             <h4 className="font-serif font-bold text-white border-b border-white/10 pb-2.5 mb-3.5 flex items-center justify-between">

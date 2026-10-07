@@ -10,12 +10,14 @@ import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
 import InstitutionalModals from './components/InstitutionalModals';
 
-import { INITIAL_ARTICLES, INITIAL_VOLUMES, JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS } from './data';
+import { JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS, INITIAL_VOLUMES, INITIAL_ARTICLES } from './data';
 import { Article, Review, UserRole, Volume, InstitutionalModalType, AuthUser, EditorialMember } from './types';
+import { AlertTriangle, CheckCircle2, XCircle, RefreshCw, X } from 'lucide-react';
 import { 
   fetchArticles, 
   fetchVolumes, 
   saveArticleToSupabase, 
+  deleteArticleFromSupabase,
   saveReviewToSupabase, 
   isSupabaseConfigured,
   getCurrentUserProfile,
@@ -36,12 +38,14 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [volumes, setVolumes] = useState<Volume[]>([]);
+  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
+  const [volumes, setVolumes] = useState<Volume[]>(INITIAL_VOLUMES);
   const [activeModal, setActiveModal] = useState<InstitutionalModalType>(null);
   const [selectedArticleForReader, setSelectedArticleForReader] = useState<Article | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedVolumeFilter, setSelectedVolumeFilter] = useState<string | null>(null);
+  const [supabaseAlert, setSupabaseAlert] = useState<{ type: 'error' | 'success'; message: string; details?: string } | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Editable Editorial Board & Scientific Council
   const [editorialBoard, setEditorialBoard] = useState<EditorialMember[]>(() => {
@@ -121,50 +125,34 @@ export default function App() {
     }
   }, []);
 
-  // 2. Load articles & volumes with Supabase remote sync and local fallback
+  // 2. Load articles & volumes directly from Supabase (without fallback to memory/LocalStorage)
   useEffect(() => {
     async function loadData() {
-      // Immediate local load to prevent any layout shift
-      const storedArticles = localStorage.getItem('oj_articles');
-      const storedVolumes = localStorage.getItem('oj_volumes');
-
-      let initialArticlesList = INITIAL_ARTICLES;
-      let initialVolumesList = INITIAL_VOLUMES;
-
-      if (storedArticles) {
-        try {
-          initialArticlesList = JSON.parse(storedArticles);
-        } catch (e) {
-          initialArticlesList = INITIAL_ARTICLES;
-        }
-      }
-      if (storedVolumes) {
-        try {
-          initialVolumesList = JSON.parse(storedVolumes);
-        } catch (e) {
-          initialVolumesList = INITIAL_VOLUMES;
-        }
-      }
-
-      setArticles(initialArticlesList);
-      setVolumes(initialVolumesList);
-
-      // Asynchronous remote sync using Supabase services
+      setIsLoadingData(true);
       try {
+        if (!isSupabaseConfigured) {
+          throw new Error('Faltan credenciales de Supabase en variables de entorno (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY). Por favor configure su archivo .env.');
+        }
+
         const [remoteVolumes, remoteArticles] = await Promise.all([
           getVolumes(),
           getAllArticlesForEditor()
         ]);
-        if (remoteVolumes && remoteVolumes.length > 0) {
-          setVolumes(remoteVolumes);
-          localStorage.setItem('oj_volumes', JSON.stringify(remoteVolumes));
-        }
-        if (remoteArticles && remoteArticles.length > 0) {
-          setArticles(remoteArticles);
-          localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
-        }
-      } catch (err) {
-        console.warn('Supabase remote sync fallback:', err);
+        setVolumes(remoteVolumes);
+        setArticles(remoteArticles);
+        setSupabaseAlert({
+          type: 'success',
+          message: `Conexión en tiempo real con Supabase verificada: ${remoteVolumes.length} volúmenes y ${remoteArticles.length} artículos cargados.`
+        });
+      } catch (err: any) {
+        console.error('Error al consultar Supabase en loadData:', err);
+        setSupabaseAlert({
+          type: 'error',
+          message: 'Error al consultar datos en Supabase',
+          details: err.message || String(err)
+        });
+      } finally {
+        setIsLoadingData(false);
       }
     }
 
@@ -173,20 +161,27 @@ export default function App() {
 
   const handleRefreshArticles = async () => {
     try {
+      if (!isSupabaseConfigured) {
+        throw new Error('Faltan credenciales de Supabase en variables de entorno (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).');
+      }
+
       const [remoteVolumes, remoteArticles] = await Promise.all([
         getVolumes(),
         getAllArticlesForEditor()
       ]);
-      if (remoteVolumes && remoteVolumes.length > 0) {
-        setVolumes(remoteVolumes);
-        localStorage.setItem('oj_volumes', JSON.stringify(remoteVolumes));
-      }
-      if (remoteArticles && remoteArticles.length > 0) {
-        setArticles(remoteArticles);
-        localStorage.setItem('oj_articles', JSON.stringify(remoteArticles));
-      }
-    } catch (err) {
-      console.warn('Error refrescando desde Supabase:', err);
+      setVolumes(remoteVolumes);
+      setArticles(remoteArticles);
+      setSupabaseAlert({
+        type: 'success',
+        message: `Sincronización completada con Supabase (${remoteArticles.length} artículos).`
+      });
+    } catch (err: any) {
+      console.error('Error al sincronizar con Supabase:', err);
+      setSupabaseAlert({
+        type: 'error',
+        message: 'Error al sincronizar con Supabase',
+        details: err.message || String(err)
+      });
     }
   };
 
@@ -215,14 +210,12 @@ export default function App() {
   const handleAuthSuccess = (user: AuthUser) => {
     setCurrentUser(user);
     setCurrentRole(user.role);
-    localStorage.setItem('oj_auth_user', JSON.stringify(user));
   };
 
   const handleLogout = async () => {
     await logoutUser();
     setCurrentUser(null);
     setCurrentRole('reader');
-    localStorage.removeItem('oj_auth_user');
   };
 
   const handleOpenAuthModal = (mode: 'login' | 'register' = 'login') => {
@@ -230,78 +223,126 @@ export default function App() {
     setIsAuthModalOpen(true);
   };
 
-  // State persistence helper
-  const saveState = (updatedArticles: Article[]) => {
-    setArticles(updatedArticles);
+  // Editorial and peer-review state mutations (directly executed against Supabase)
+  const handleAddArticle = async (newArticle: Article) => {
     try {
-      localStorage.setItem('oj_articles', JSON.stringify(updatedArticles));
-    } catch (e) {
-      console.error('Error guardando en LocalStorage:', e);
+      await saveArticleToSupabase(newArticle);
+      setArticles(prev => [newArticle, ...prev.filter(a => a.id !== newArticle.id)]);
+      setSupabaseAlert({
+        type: 'success',
+        message: `Artículo "${newArticle.title}" registrado correctamente en Supabase.`
+      });
+    } catch (err: any) {
+      console.error('Error al guardar artículo en Supabase:', err);
+      setSupabaseAlert({
+        type: 'error',
+        message: 'Error al registrar artículo en Supabase',
+        details: err.message || String(err)
+      });
     }
   };
 
-  // Editorial and peer-review state mutations (with safe background sync)
-  const handleAddArticle = (newArticle: Article) => {
-    const updated = [newArticle, ...articles];
-    saveState(updated);
-    saveArticleToSupabase(newArticle).catch(err => console.warn('Supabase background sync:', err));
-  };
-
-  const handleUpdateArticle = (updatedArticle: Article) => {
-    const updated = articles.map(art => art.id === updatedArticle.id ? updatedArticle : art);
-    saveState(updated);
-    saveArticleToSupabase(updatedArticle).catch(err => console.warn('Supabase background sync:', err));
-  };
-
-  const handleAddReview = (articleId: string, review: Review) => {
-    let targetArticle: Article | undefined;
-    const updated = articles.map(art => {
-      if (art.id === articleId) {
-        const updatedReviews = [...art.reviews, review];
-        const artWithReview = {
-          ...art,
-          reviews: updatedReviews,
-          editorNotes: `Nuevo dictamen de revisión cargado por ${review.reviewerName} el ${review.submittedAt}.`
-        };
-        targetArticle = artWithReview;
-        return artWithReview;
-      }
-      return art;
-    });
-    saveState(updated);
-    saveReviewToSupabase(review).catch(err => console.warn('Supabase review sync:', err));
-    if (targetArticle) {
-      saveArticleToSupabase(targetArticle).catch(err => console.warn('Supabase article sync:', err));
+  const handleUpdateArticle = async (updatedArticle: Article) => {
+    try {
+      await saveArticleToSupabase(updatedArticle);
+      setArticles(prev => prev.map(art => art.id === updatedArticle.id ? updatedArticle : art));
+      setSupabaseAlert({
+        type: 'success',
+        message: 'Artículo actualizado exitosamente en Supabase'
+      });
+      setTimeout(() => setSupabaseAlert(null), 3000);
+    } catch (err: any) {
+      console.error('Error al actualizar artículo en Supabase:', err);
+      setSupabaseAlert({
+        type: 'error',
+        message: 'Error al actualizar artículo en Supabase',
+        details: err.message || String(err)
+      });
     }
   };
 
-  const handlePublishArticle = (articleId: string, volumeId: string, doi: string) => {
-    let publishedArt: Article | undefined;
-    const updated = articles.map(art => {
-      if (art.id === articleId) {
-        const pub = {
-          ...art,
-          status: 'published' as const,
-          publishedInVolumeId: volumeId,
-          doi: doi,
-          editorNotes: `Publicado oficialmente en el volumen [${volumeId}] con DOI: ${doi}.`
-        };
-        publishedArt = pub;
-        return pub;
-      }
-      return art;
-    });
-    saveState(updated);
-    if (publishedArt) {
-      saveArticleToSupabase(publishedArt).catch(err => console.warn('Supabase publish sync:', err));
+  const handleDeleteArticle = async (articleId: string) => {
+    try {
+      await deleteArticleFromSupabase(articleId);
+      setArticles(prev => prev.filter(art => art.id !== articleId));
+      setSupabaseAlert({
+        type: 'success',
+        message: 'Artículo y registros vinculados eliminados correctamente de Supabase'
+      });
+      setTimeout(() => setSupabaseAlert(null), 4000);
+    } catch (err: any) {
+      console.error('Error al eliminar artículo en Supabase:', err);
+      setSupabaseAlert({
+        type: 'error',
+        message: 'Error al eliminar artículo en Supabase',
+        details: err.message || String(err)
+      });
+    }
+  };
+
+  const handleAddReview = async (articleId: string, review: Review) => {
+    try {
+      await saveReviewToSupabase(review);
+      setArticles(prev => prev.map(art => {
+        if (art.id === articleId) {
+          const updatedReviews = [...art.reviews.filter(r => r.id !== review.id), review];
+          return {
+            ...art,
+            reviews: updatedReviews,
+            status: 'under_review' as const,
+            editorNotes: `Nuevo dictamen cargado por ${review.reviewerName} el ${review.submittedAt}.`
+          };
+        }
+        return art;
+      }));
+      setSupabaseAlert({
+        type: 'success',
+        message: 'Dictamen de arbitraje guardado en Supabase (public.reviews).'
+      });
+    } catch (err: any) {
+      console.error('Error al guardar dictamen en Supabase:', err);
+      setSupabaseAlert({
+        type: 'error',
+        message: 'Error al guardar revisión en Supabase',
+        details: err.message || String(err)
+      });
+    }
+  };
+
+  const handlePublishArticle = async (articleId: string, volumeId: string, doi: string) => {
+    try {
+      await publishArticleToVolume(articleId, volumeId, doi);
+      setArticles(prev => prev.map(art => {
+        if (art.id === articleId) {
+          return {
+            ...art,
+            status: 'published' as const,
+            publishedInVolumeId: volumeId,
+            doi: doi,
+            editorNotes: `Publicado oficialmente en el volumen [${volumeId}] con DOI: ${doi}.`
+          };
+        }
+        return art;
+      }));
+      setSupabaseAlert({
+        type: 'success',
+        message: `Artículo publicado en Supabase (Volumen ${volumeId}, DOI: ${doi}).`
+      });
+    } catch (err: any) {
+      console.error('Error publicando artículo en Supabase:', err);
+      setSupabaseAlert({
+        type: 'error',
+        message: 'Error al publicar artículo en Supabase',
+        details: err.message || String(err)
+      });
     }
   };
 
   // Direct fast publication handler (Launch Flow)
   const handleDirectPublish = (newArticle: Article) => {
-    // 1. Immediately update local state to reflect in ReaderView and CoverHero
+    // 1. Immediately update state to reflect in ReaderView and CoverHero
     const updated = [newArticle, ...articles.filter(a => a.id !== newArticle.id)];
-    saveState(updated);
+    setArticles(updated);
 
     // 2. Refresh volumes and articles from Supabase in background
     handleRefreshArticles();
@@ -321,7 +362,7 @@ export default function App() {
     if (currentRole !== 'reader') {
       setCurrentRole('reader');
     }
-    setSelectedVolumeFilter(currentVolume.id);
+    setSelectedVolumeFilter(currentVolume?.id || 'v1n1');
     scrollToCatalog();
   };
 
@@ -349,33 +390,14 @@ export default function App() {
     setSelectedArticleForReader(article);
   };
 
-  // Reset demo states
-  const handleResetDemo = () => {
-    if (confirm('¿Desea restaurar el entorno? Se borrarán los datos temporales en caché y se recargarán los de fábrica.')) {
-      localStorage.removeItem('oj_articles');
-      localStorage.removeItem('oj_volumes');
-      localStorage.removeItem('oj_auth_user');
-      localStorage.removeItem('oj_editorial_board');
-      setArticles(INITIAL_ARTICLES);
-      setVolumes(INITIAL_VOLUMES);
-      setEditorialBoard(EDITORIAL_BOARD_MEMBERS.map((m, idx) => ({
-        id: 'colp_ed_' + idx,
-        name: m.name,
-        role: m.role,
-        institution: m.institution,
-        country: m.country,
-        specialty: m.specialty,
-        category: (m.role.toLowerCase().includes('asesor') ? 'advisory' : 'editorial') as 'editorial' | 'advisory'
-      })));
-      setCurrentUser(null);
-      setCurrentRole('reader');
-      setSelectedArticleForReader(null);
-      setSelectedVolumeFilter(null);
-      setSearchQuery('');
+  // Reload real Supabase data
+  const handleResetDemo = async () => {
+    if (confirm('¿Desea recargar los datos directamente desde Supabase?')) {
+      await handleRefreshArticles();
     }
   };
 
-  // Published articles and active volume
+  // Published articles and active volume directly from Supabase state
   const publishedArticles = articles.filter(a => a.status === 'published');
   const currentVolume = volumes.find(v => v.isCurrent) || volumes[0] || INITIAL_VOLUMES[0];
 
@@ -413,8 +435,59 @@ export default function App() {
       </div>
 
       {/* Main Content Workspace */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-grow w-full space-y-6">
         
+        {/* Real-time Supabase Connection & Error Status Banner */}
+        {supabaseAlert && (
+          <div 
+            className={`fade-in rounded-2xl p-4 sm:p-5 border flex items-start justify-between gap-4 shadow-xl backdrop-blur-xl ${
+              supabaseAlert.type === 'error'
+                ? 'bg-rose-950/80 border-rose-500/60 text-rose-200 shadow-rose-950/50'
+                : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200 shadow-emerald-950/40'
+            }`}
+            role="alert"
+          >
+            <div className="flex items-start gap-3">
+              {supabaseAlert.type === 'error' ? (
+                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              )}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono tracking-wider font-bold px-2 py-0.5 rounded-full bg-black/40 border border-white/10">
+                    {supabaseAlert.type === 'error' ? 'Alerta Supabase en Vivo' : 'Conexión Supabase Activa'}
+                  </span>
+                  <span className="text-xs font-semibold">{supabaseAlert.message}</span>
+                </div>
+                {supabaseAlert.details && (
+                  <p className="text-xs font-mono opacity-90 break-all bg-black/30 p-2 rounded-lg border border-white/5">
+                    {supabaseAlert.details}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleRefreshArticles}
+                className="px-3 py-1.5 text-xs font-mono font-bold rounded-xl bg-white/10 hover:bg-white/20 transition-all flex items-center gap-1.5 cursor-pointer text-white"
+                title="Reintentar consulta en Supabase"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reintentar</span>
+              </button>
+              <button
+                onClick={() => setSupabaseAlert(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white cursor-pointer"
+                aria-label="Cerrar alerta"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* PUBLIC READER PORTAL */}
         {currentRole === 'reader' && (
           <>
@@ -422,7 +495,7 @@ export default function App() {
             <CoverHero 
               currentVolume={currentVolume}
               previousVolumes={volumes.filter(v => !v.isCurrent)}
-              featuredArticles={publishedArticles.slice(0, 4)}
+              featuredArticles={publishedArticles}
               onExploreCatalog={() => {
                 setSelectedVolumeFilter(null);
                 scrollToCatalog();
@@ -528,6 +601,8 @@ export default function App() {
               onUpdateEditorialBoard={handleUpdateEditorialBoard}
               onOpenEditorialModal={() => setActiveModal('about')}
               onDirectPublishSuccess={handleDirectPublish}
+              onUpdateArticle={handleUpdateArticle}
+              onDeleteArticle={handleDeleteArticle}
             />
           </div>
         )}

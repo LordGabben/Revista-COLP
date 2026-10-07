@@ -58,21 +58,7 @@ export default function ReviewerDashboard({ articles, onAddReview }: ReviewerDas
       if (result.success && result.review) {
         onAddReview(reviewingArticle.id, result.review);
       } else {
-        // Fallback review object
-        const fallbackReview: Review = {
-          id: 'rev-row-' + Date.now(),
-          articleId: reviewingArticle.id,
-          reviewerId: activeReviewer.id,
-          reviewerName: activeReviewer.name,
-          originalityScore: originality,
-          methodologyScore: methodology,
-          clinicalRelevanceScore: relevance,
-          ethicalScore: ethical,
-          comments: comments.trim(),
-          recommendation,
-          submittedAt: new Date().toISOString().split('T')[0]
-        };
-        onAddReview(reviewingArticle.id, fallbackReview);
+        throw new Error('No se pudo registrar la revisión en Supabase.');
       }
 
       setReviewingArticle(null);

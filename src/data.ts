@@ -130,69 +130,17 @@ export const INDEXING_SYSTEMS = [
 
 export const INITIAL_VOLUMES: Volume[] = [
   {
-    id: "v12n2",
-    title: "Vol. 12 Núm. 2 (2026): Revista Internacional de Odontología Avanzada",
-    volumeNumber: 12,
-    issueNumber: 2,
+    id: "v1n1",
+    title: "Vol. 1 Núm. 1 (2026): Scientia Dentis - Revista Científica Oficial",
+    volumeNumber: 1,
+    issueNumber: 1,
     year: 2026,
     isCurrent: true,
-    publishedAt: "2026-06-15",
+    publishedAt: "2026-01-15",
     coverImage: currentVolumeCoverImg,
-    articleCount: 6,
-    theme: "Odontología Avanzada & Biomecánica",
-    pdfUrl: "Scientia_Dentis_Vol12_Num2_2026.pdf"
-  },
-  {
-    id: "v12n1",
-    title: "Vol. 12 Núm. 1 (2026): Innovación en Biomateriales y Regeneración Ósea",
-    volumeNumber: 12,
-    issueNumber: 1,
-    year: 2026,
-    isCurrent: false,
-    publishedAt: "2026-01-20",
-    coverImage: coverBiomaterialsImg,
-    articleCount: 8,
-    theme: "Biomateriales y Regeneración Ósea",
-    pdfUrl: "Scientia_Dentis_Vol12_Num1_2026.pdf"
-  },
-  {
-    id: "v11n2",
-    title: "Vol. 11 Núm. 2 (2025): Endodoncia Microscópica y Tomografía CBCT",
-    volumeNumber: 11,
-    issueNumber: 2,
-    year: 2025,
-    isCurrent: false,
-    publishedAt: "2025-08-14",
-    coverImage: coverEndodonticsImg,
-    articleCount: 7,
-    theme: "Endodoncia Microscópica & CBCT",
-    pdfUrl: "Scientia_Dentis_Vol11_Num2_2025.pdf"
-  },
-  {
-    id: "v11n1",
-    title: "Vol. 11 Núm. 1 (2025): Odontopediatría Clínica y Prevención Temprana",
-    volumeNumber: 11,
-    issueNumber: 1,
-    year: 2025,
-    isCurrent: false,
-    publishedAt: "2025-02-18",
-    coverImage: coverPediatricImg,
-    articleCount: 8,
-    theme: "Odontopediatría & Prevención",
-    pdfUrl: "Scientia_Dentis_Vol11_Num1_2025.pdf"
-  },
-  {
-    id: "v10n2",
-    title: "Vol. 10 Núm. 2 (2024): Rehabilitación Oral e Implantes Cigomáticos",
-    volumeNumber: 10,
-    issueNumber: 2,
-    year: 2024,
-    isCurrent: false,
-    publishedAt: "2024-09-10",
-    coverImage: coverZygomaticImg,
-    articleCount: 9,
-    theme: "Rehabilitación Oral & Cigomáticos",
-    pdfUrl: "Scientia_Dentis_Vol10_Num2_2024.pdf"
+    articleCount: 1,
+    theme: "Odontología Multidisciplinaria & Investigación Clínica",
+    pdfUrl: "Scientia_Dentis_Vol1_Num1_2026.pdf"
   }
 ];
 
@@ -266,6 +214,7 @@ export const INITIAL_ARTICLES: Article[] = [
     category: "Implantología Oral",
     submittedAt: "2026-01-10",
     status: "published",
+    cover_image_url: coverBiomaterialsImg,
     manuscriptFile: {
       name: "Baeza_TiZr_Implantes_Diabetes.pdf",
       size: "2.4 MB",
@@ -355,9 +304,9 @@ export const INITIAL_ARTICLES: Article[] = [
         submittedAt: "2026-02-22"
       }
     ],
-    editorNotes: "Artículo de alta relevancia clínica y metodológica. Se aprueba la publicación en el Vol. 12 Núm. 2 tras resolver adecuadamente las observaciones menores del revisor 2.",
-    publishedInVolumeId: "v12n2",
-    doi: "https://doi.org/10.48512/rcoab.2026.12201",
+    editorNotes: "Artículo de alta relevancia clínica y metodológica. Se aprueba la publicación en el Vol. 1 Núm. 1 (2026) tras resolver adecuadamente las observaciones menores del revisor 2.",
+    publishedInVolumeId: "v1n1",
+    doi: "https://doi.org/10.58472/sd.2026.1101",
     references: [
       "Buser D, Sennerby L, De Bruyn H. Modern implant dentistry based on osseointegration. Periodontol 2000. 2017;73(1):7-21.",
       "Naujokat H, Kunzendorf B, Wiltfang J. Dental implants and systemic diseases: a systematic review. Int J Implant Dent. 2020;6(1):17.",
@@ -394,6 +343,7 @@ export const INITIAL_ARTICLES: Article[] = [
     category: "Endodoncia",
     submittedAt: "2026-02-18",
     status: "published",
+    cover_image_url: coverEndodonticsImg,
     manuscriptFile: {
       name: "Fuentes_MicroCT_Biocermicos_Endodoncia.docx",
       size: "3.1 MB",
@@ -450,9 +400,9 @@ export const INITIAL_ARTICLES: Article[] = [
         submittedAt: "2026-03-20"
       }
     ],
-    editorNotes: "Estudio in vitro de alta precisión técnica. Publicado en la sección de Endodoncia del volumen actual.",
-    publishedInVolumeId: "v12n2",
-    doi: "https://doi.org/10.48512/rcoab.2026.12202",
+    editorNotes: "Estudio in vitro de alta precisión técnica. Publicado en la sección de Endodoncia del Vol. 1 Núm. 1 (2026).",
+    publishedInVolumeId: "v1n1",
+    doi: "https://doi.org/10.58472/sd.2026.1102",
     references: [
       "Prati C, Gandolfi MG. Calcium silicate bioactive cements as epitomes of a new era of endodontic materials. Biocompat Dent. 2015;41(4):11-23.",
       "Guven Y, et al. Micro-CT evaluation of apical sealing ability of bioceramic sealers. J Endod. 2019;45(3):311-316."
@@ -638,6 +588,7 @@ export const INITIAL_ARTICLES: Article[] = [
     category: "Implantología Oral",
     submittedAt: "2025-11-12",
     status: "published",
+    cover_image_url: coverBiomaterialsImg,
     publishedInVolumeId: "v12n1",
     doi: "https://doi.org/10.58472/sd.2026.12101",
     manuscriptFile: { name: "Baeza_Biomateriales_ROG.pdf", size: "3.1 MB", format: "pdf" },
@@ -660,6 +611,7 @@ export const INITIAL_ARTICLES: Article[] = [
     category: "Endodoncia",
     submittedAt: "2025-06-10",
     status: "published",
+    cover_image_url: coverEndodonticsImg,
     publishedInVolumeId: "v11n2",
     doi: "https://doi.org/10.58472/sd.2025.11201",
     manuscriptFile: { name: "Espinoza_CBCT_MB2_Endodoncia.pdf", size: "4.4 MB", format: "pdf" },
@@ -682,6 +634,7 @@ export const INITIAL_ARTICLES: Article[] = [
     category: "Odontopediatría",
     submittedAt: "2024-12-05",
     status: "published",
+    cover_image_url: coverPediatricImg,
     publishedInVolumeId: "v11n1",
     doi: "https://doi.org/10.58472/sd.2025.11101",
     manuscriptFile: { name: "Valenzuela_Quitosano_Fluor_Esmalte.pdf", size: "2.8 MB", format: "pdf" },
@@ -704,6 +657,7 @@ export const INITIAL_ARTICLES: Article[] = [
     category: "Cirugía Maxilofacial",
     submittedAt: "2024-07-15",
     status: "published",
+    cover_image_url: coverZygomaticImg,
     publishedInVolumeId: "v10n2",
     doi: "https://doi.org/10.58472/sd.2024.10201",
     manuscriptFile: { name: "Baeza_Implantes_Cigomaticos_5Anos.pdf", size: "5.1 MB", format: "pdf" },

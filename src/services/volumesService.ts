@@ -1,127 +1,99 @@
-import { supabase, isSupabaseConfigured, resolveVolumeCover } from '../lib/supabase';
+import { supabase, mapVolumeRow } from '../lib/supabase';
 import { Volume } from '../types';
-import { INITIAL_VOLUMES } from '../data';
+import currentVolumeCoverImg from '../assets/images/current_volume_cover_1790466202632.jpg';
 
-/**
- * Maps Supabase raw database row to frontend Volume type
- */
-export function mapVolumeRow(row: any): Volume {
-  const safeCover = resolveVolumeCover(row.id, row.cover_image || row.coverImage);
+// Definición oficial del primer volumen del año 2026: Vol. 1 Núm. 1 (2026)
+export const OFFICIAL_FIRST_VOLUME_2026: Volume = {
+  id: 'v1n1',
+  title: 'Vol. 1 Núm. 1 (2026): Scientia Dentis - Revista Científica Oficial',
+  volumeNumber: 1,
+  issueNumber: 1,
+  year: 2026,
+  isCurrent: true,
+  publishedAt: '2026-01-15',
+  coverImage: currentVolumeCoverImg,
+  articleCount: 1,
+  theme: 'Odontología Multidisciplinaria & Investigación Clínica',
+  pdfUrl: 'Scientia_Dentis_Vol1_Num1_2026.pdf'
+};
 
-  return {
-    id: row.id,
-    title: row.title || 'Scientia Dentis',
-    volumeNumber: row.volume_number ?? row.volumeNumber ?? 12,
-    issueNumber: row.issue_number ?? row.issueNumber ?? 2,
-    year: row.year ?? 2026,
-    isCurrent: Boolean(row.is_current ?? row.isCurrent),
-    publishedAt: row.published_at ?? row.publishedAt ?? new Date().toISOString().split('T')[0],
-    coverImage: safeCover,
-    articleCount: row.article_count ?? row.articleCount ?? 8,
-    theme: row.theme,
-    pdfUrl: row.pdf_url ?? row.pdfUrl,
-  };
-}
+// IDs y patrones de volúmenes de ejemplo para no tomarlos en cuenta
+const DEMO_EXAMPLE_VOLUMES = new Set(['v12n2', 'v12n1', 'v11n2', 'v11n1', 'v10n2']);
 
 /**
  * 1. getVolumes():
- * Fetches all volumes from `public.volumes` ordered by year and volume number descending.
- * Includes graceful fallback to localStorage / INITIAL_VOLUMES.
+ * Consulta directamente la tabla 'public.volumes' en Supabase.
+ * Descarta todos los volúmenes de ejemplo anteriores (v12n2, v12n1, etc.)
+ * y retorna únicamente los fascículos oficiales reales, siendo el primero el Vol. 1 Núm. 1 (2026).
  */
 export async function getVolumes(): Promise<Volume[]> {
-  // If Supabase client is not available, return cached or initial volumes
-  if (!isSupabaseConfigured || !supabase) {
-    const local = localStorage.getItem('oj_volumes');
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {
-        console.warn('Error parseando oj_volumes:', e);
-      }
-    }
-    return INITIAL_VOLUMES;
+  const { data, error } = await supabase
+    .from('volumes')
+    .select('*')
+    .order('year', { ascending: false })
+    .order('volume_number', { ascending: false });
+
+  if (error) {
+    console.error('Error al consultar volúmenes en Supabase:', error);
+    throw new Error(`[Supabase Error - volumes] ${error.message} (Código: ${error.code})`);
   }
 
-  try {
-    const { data, error } = await supabase
-      .from('volumes')
-      .select('*')
-      .order('year', { ascending: false })
-      .order('volume_number', { ascending: false });
-
-    if (error || !data || data.length === 0) {
-      console.warn('Supabase getVolumes error o tabla vacía, usando fallback:', error?.message);
-      const local = localStorage.getItem('oj_volumes');
-      return local ? JSON.parse(local) : INITIAL_VOLUMES;
+  // Filtrar los volúmenes de ejemplo de prueba
+  const realRows = (data || []).filter(row => {
+    if (DEMO_EXAMPLE_VOLUMES.has(row.id)) return false;
+    if (typeof row.title === 'string' && (row.title.includes('Vol. 12') || row.title.includes('Vol. 11') || row.title.includes('Vol. 10'))) {
+      return false;
     }
+    return true;
+  });
 
-    const mapped = data.map(mapVolumeRow);
-    // Cache locally for instant loading on reloads
-    try {
-      localStorage.setItem('oj_volumes', JSON.stringify(mapped));
-    } catch (e) {}
+  const mapped = realRows.map(mapVolumeRow);
 
-    return mapped;
-  } catch (err) {
-    console.warn('Excepción al conectar con Supabase en getVolumes:', err);
-    const local = localStorage.getItem('oj_volumes');
-    return local ? JSON.parse(local) : INITIAL_VOLUMES;
+  // Asegurar que el primer volumen del 2026 (Vol. 1 Núm. 1) sea el oficial activo
+  if (!mapped.some(v => v.id === 'v1n1' || (v.volumeNumber === 1 && v.issueNumber === 1 && v.year === 2026))) {
+    mapped.unshift(OFFICIAL_FIRST_VOLUME_2026);
   }
+
+  return mapped;
 }
 
 /**
  * 2. getCurrentVolume():
- * Fetches the active current volume where `is_current = true`.
+ * Retorna el volumen actual oficial (Vol. 1 Núm. 1 2026).
  */
 export async function getCurrentVolume(): Promise<Volume> {
-  const volumes = await getVolumes();
-  const current = volumes.find(v => v.isCurrent);
-  return current || volumes[0] || INITIAL_VOLUMES[0];
+  const allVolumes = await getVolumes();
+  const current = allVolumes.find(v => v.isCurrent) || allVolumes[0] || OFFICIAL_FIRST_VOLUME_2026;
+  return current;
 }
 
 /**
  * 3. incrementVolumeArticleCount(volumeId: string):
- * Increments the article_count field of a specific volume row in Supabase.
+ * Incrementa directamente en Supabase el contador 'article_count' en la fila del volumen.
+ * Lanza error si falla.
  */
 export async function incrementVolumeArticleCount(volumeId: string): Promise<boolean> {
-  if (!isSupabaseConfigured || !supabase) {
-    // Update local storage fallback
-    const local = localStorage.getItem('oj_volumes');
-    if (local) {
-      try {
-        const vols: Volume[] = JSON.parse(local);
-        const updated = vols.map(v => v.id === volumeId ? { ...v, articleCount: (v.articleCount || 0) + 1 } : v);
-        localStorage.setItem('oj_volumes', JSON.stringify(updated));
-      } catch (e) {}
-    }
-    return true;
+  const { data, error: readError } = await supabase
+    .from('volumes')
+    .select('article_count')
+    .eq('id', volumeId)
+    .single();
+
+  if (readError) {
+    console.error('Error al leer volumen para incrementar conteo:', readError);
+    throw new Error(`[Supabase Error] No se pudo leer el volumen ${volumeId}: ${readError.message}`);
   }
 
-  try {
-    // First read current count
-    const { data, error } = await supabase
-      .from('volumes')
-      .select('article_count')
-      .eq('id', volumeId)
-      .single();
+  const currentCount = data?.article_count ?? 0;
+  const { error: updateError } = await supabase
+    .from('volumes')
+    .update({ article_count: currentCount + 1 })
+    .eq('id', volumeId);
 
-    if (error && error.code !== 'PGRST116') {
-      console.warn('Error leyendo volumen en incrementVolumeArticleCount:', error.message);
-    }
-
-    const currentCount = data?.article_count ?? 8;
-    const { error: updateErr } = await supabase
-      .from('volumes')
-      .update({ article_count: currentCount + 1 })
-      .eq('id', volumeId);
-
-    if (updateErr) {
-      console.warn('Error actualizando article_count en Supabase:', updateErr.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('Excepción en incrementVolumeArticleCount:', err);
-    return false;
+  if (updateError) {
+    console.error('Error al actualizar article_count en Supabase:', updateError);
+    throw new Error(`[Supabase Error] No se pudo incrementar article_count en volumen: ${updateError.message}`);
   }
+
+  return true;
 }

@@ -14,7 +14,8 @@ import {
   Calendar,
   Lock,
   Globe2,
-  Sparkles
+  Sparkles,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Article, Volume } from '../types';
 import { DENTAL_CATEGORIES } from '../data';
@@ -36,7 +37,7 @@ export default function DirectPublishModal({
   onPublishSuccess
 }: DirectPublishModalProps) {
   const currentVolume = volumes.find(v => v.isCurrent) || volumes[0];
-  const initialVolumeId = defaultVolumeId || currentVolume?.id || 'v12n2';
+  const initialVolumeId = defaultVolumeId || currentVolume?.id || 'v1n1';
 
   // Form State
   const [title, setTitle] = useState('');
@@ -48,6 +49,8 @@ export default function DirectPublishModal({
   const [volumeId, setVolumeId] = useState(initialVolumeId);
   const [customDoi, setCustomDoi] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
 
   // Status & Progress State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,8 +60,34 @@ export default function DirectPublishModal({
   const [publishedArticle, setPublishedArticle] = useState<Article | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMessage(null);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        setErrorMessage('El archivo de portada debe ser una imagen válida (.jpg, .png, .webp).');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMessage('La imagen de portada no debe exceder los 5 MB.');
+        return;
+      }
+      setCoverImageFile(file);
+      setCoverImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeCoverImage = () => {
+    setCoverImageFile(null);
+    if (coverImagePreview) {
+      URL.revokeObjectURL(coverImagePreview);
+      setCoverImagePreview(null);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setErrorMessage(null);
@@ -140,6 +169,7 @@ export default function DirectPublishModal({
         keywords: keywordsArray.length > 0 ? keywordsArray : ['Odontología', category],
         volumeId,
         pdfFile,
+        coverImageFile,
         doi: customDoi.trim() || undefined,
         onProgress: (status, percent) => {
           setProgressStatus(status);
@@ -480,6 +510,76 @@ export default function DirectPublishModal({
                       </p>
                       <p className="text-[10px] font-mono text-slate-500">
                         Solo archivos .PDF oficiales • Máximo 25 MB • Subida directa a Supabase Storage
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* COVER IMAGE INPUT ZONE (OPTIONAL) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-mono text-slate-300">
+                    Imagen de Portada Ilustrativa del Artículo <span className="text-slate-500 font-sans text-[11px]">(Opcional)</span>
+                  </label>
+                  <span className="text-[10px] font-mono text-cyan-400">
+                    Mini Carrusel Hero
+                  </span>
+                </div>
+
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  onChange={handleCoverChange}
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => coverInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all ${
+                    coverImageFile
+                      ? 'border-cyan-500/50 bg-cyan-950/20'
+                      : 'border-white/15 bg-slate-950 hover:border-cyan-400/50 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  {coverImagePreview && coverImageFile ? (
+                    <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden border border-cyan-400/40 bg-slate-900 shrink-0 shadow-md">
+                          <img 
+                            src={coverImagePreview} 
+                            alt="Vista previa portada" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="truncate">
+                          <p className="font-semibold text-white truncate text-xs">{coverImageFile.name}</p>
+                          <p className="text-[10px] font-mono text-cyan-400">
+                            {formatFileSize(coverImageFile.size)} • Portada ilustrativa lista
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeCoverImage();
+                        }}
+                        className="px-2.5 py-1 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-lg transition-colors shrink-0"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 py-1">
+                      <ImageIcon className="w-7 h-7 text-cyan-400 mx-auto" />
+                      <p className="text-xs font-semibold text-white">
+                        Haga clic para subir la imagen de portada (.jpg, .png, .webp)
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-sans">
+                        Máximo 5 MB. Si no se adjunta, se asignará automáticamente una portada científica elegante por defecto.
                       </p>
                     </div>
                   )}

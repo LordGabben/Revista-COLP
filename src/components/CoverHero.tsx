@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Volume, Article, InstitutionalModalType, UserRole } from '../types';
-import { JOURNAL_INFO, JOURNAL_IMPACT_METRICS, INITIAL_VOLUMES } from '../data';
+import { 
+  JOURNAL_INFO, 
+  INITIAL_VOLUMES, 
+  INITIAL_ARTICLES,
+  coverBiomaterialsImg, 
+  coverEndodonticsImg, 
+  coverPediatricImg, 
+  coverZygomaticImg 
+} from '../data';
 import { 
   BookOpen, 
   Download, 
@@ -13,15 +21,39 @@ import {
   FileText, 
   Users,
   PenTool,
-  Archive
+  Archive,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 import ColpLogo from './ColpLogo';
 import dentalHeroImg from '../assets/images/dental_research_hero_1790466211700.jpg';
 import { resolveVolumeCover } from '../lib/supabase';
 
+// High-fidelity fallback cover mappings per dental discipline
+const CATEGORY_DEFAULT_COVERS: Record<string, string> = {
+  'Implantología': coverZygomaticImg,
+  'Cirugía Bucal': coverZygomaticImg,
+  'Cirugía Maxilofacial': coverZygomaticImg,
+  'Endodoncia': coverEndodonticsImg,
+  'Odontopediatría': coverPediatricImg,
+  'Periodoncia': coverBiomaterialsImg,
+  'Biomateriales': coverBiomaterialsImg,
+  'Ortodoncia': coverBiomaterialsImg,
+  'Rehabilitación Oral': coverBiomaterialsImg,
+  'Patología Bucal': coverEndodonticsImg,
+  'Odontología General': coverBiomaterialsImg,
+};
+
+function getArticleCover(article: Article): string {
+  if (article.cover_image_url && article.cover_image_url.trim().length > 0) {
+    return article.cover_image_url;
+  }
+  return CATEGORY_DEFAULT_COVERS[article.category] || coverBiomaterialsImg;
+}
+
 interface CoverHeroProps {
-  currentVolume: Volume;
+  currentVolume?: Volume;
   featuredArticles?: Article[];
   previousVolumes?: Volume[];
   onExploreCatalog: () => void;
@@ -32,13 +64,29 @@ interface CoverHeroProps {
 }
 
 export default function CoverHero({
-  currentVolume,
+  currentVolume: propCurrentVolume,
+  featuredArticles,
   previousVolumes,
   onExploreCatalog,
+  onSelectArticle,
   onOpenModal,
   onChangeRole,
   onSelectVolume
 }: CoverHeroProps) {
+  const currentVolume = propCurrentVolume || INITIAL_VOLUMES[0];
+
+  // Articles for the continuous infinite marquee carousel
+  const rawArticles = (featuredArticles && featuredArticles.length > 0)
+    ? featuredArticles
+    : INITIAL_ARTICLES.filter(a => a.status === 'published');
+
+  // Support seamless infinite loop by replicating elements if list is small
+  const marqueeArticles = rawArticles.length === 0
+    ? []
+    : rawArticles.length < 5
+      ? [...rawArticles, ...rawArticles, ...rawArticles, ...rawArticles]
+      : [...rawArticles, ...rawArticles];
+
   // Archive volumes list (previous issues)
   const archiveVolumes: Volume[] = (previousVolumes && previousVolumes.length > 0)
     ? previousVolumes
@@ -61,7 +109,7 @@ export default function CoverHero({
     return () => clearInterval(timer);
   }, [autoplayPaused, archiveVolumes.length]);
 
-  const activeArchiveVol = archiveVolumes[activeCoverIndex] || archiveVolumes[0];
+  const activeArchiveVol = archiveVolumes[activeCoverIndex] || archiveVolumes[0] || INITIAL_VOLUMES[1] || INITIAL_VOLUMES[0];
 
   const handlePrevVolume = () => {
     setAutoplayPaused(true);
@@ -355,25 +403,37 @@ export default function CoverHero({
             </p>
           </div>
 
-          {/* Right Column: Proportionate Header + Interactive 3D Cover Flow Showcase */}
+          {/* Right Column: Proportionate Header + Interactive 3D Cover Flow Showcase or Inaugural Showcase */}
           <div className="lg:col-span-6 space-y-5">
             
             {/* 2. RESTRUCTURED PROPORTIONATE HEADER */}
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-white/10 text-slate-300 text-xs font-mono mb-2 backdrop-blur-md">
-                <Archive className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Colección y Memoria Científica</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-cyan-400/30 text-cyan-300 text-xs font-mono mb-2 backdrop-blur-md">
+                {archiveVolumes.length > 0 ? (
+                  <>
+                    <Archive className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Colección y Memoria Científica</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Lanzamiento Oficial 2026 · Edición Inaugural</span>
+                  </>
+                )}
               </div>
 
               <h2 className="font-serif text-xl md:text-2xl font-semibold text-slate-100 tracking-tight">
-                Archivo Histórico de Ediciones
+                {archiveVolumes.length > 0 ? 'Archivo Histórico de Ediciones' : 'Vol. 1 Núm. 1 (2026)'}
               </h2>
               <p className="text-xs md:text-sm text-cyan-400/80 font-sans mt-0.5">
-                Fascículos anteriores arbitrados e indexados
+                {archiveVolumes.length > 0 
+                  ? 'Fascículos anteriores arbitrados e indexados' 
+                  : 'Primer Fascículo Científico del Colegio de Odontólogos de La Paz (COLP)'}
               </p>
             </div>
 
-            {/* 3. FLUID & DYNAMIC 3D COVER FLOW (2.8s intervals, smooth transition, hover pause) */}
+            {/* 3. FLUID & DYNAMIC 3D COVER FLOW OR INAUGURAL 2026 SHOWCASE */}
+            {archiveVolumes.length > 0 ? (
             <div 
               className="bg-slate-900/60 rounded-3xl p-5 sm:p-6 border border-white/10 backdrop-blur-xl relative shadow-2xl overflow-hidden"
               onMouseEnter={() => setAutoplayPaused(true)}
@@ -600,6 +660,68 @@ export default function CoverHero({
               </div>
 
             </div>
+            ) : (
+              /* Inaugural 2026 Showcase Panel */
+              <div className="bg-slate-900/60 rounded-3xl p-6 sm:p-7 border border-cyan-500/30 backdrop-blur-xl relative shadow-2xl overflow-hidden space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-mono uppercase tracking-wider text-cyan-300 font-bold">
+                      Edición Oficial 2026 · Activa
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-semibold">
+                    Vol. 1 Núm. 1 (2026)
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-white leading-snug">
+                    {currentVolume.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                    Primer volumen oficial publicado bajo el modelo de Ciencia Abierta por el Ilustre Colegio de Odontólogos de La Paz (COLP). Incorpora arbitraje por pares a doble ciego, identificador permanente DOI y preservación digital estomatológica.
+                  </p>
+                </div>
+
+                {/* Badges Grid */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
+                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Acceso Abierto</span>
+                    <span className="text-xs text-white font-semibold mt-0.5 block">Diamante (Sin APC)</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
+                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Arbitraje Científico</span>
+                    <span className="text-xs text-white font-semibold mt-0.5 block">Doble Ciego por Pares</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
+                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Enfoque Temático</span>
+                    <span className="text-xs text-white font-semibold mt-0.5 block">Odontología Integral</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-white/10">
+                    <span className="text-[10px] font-mono text-cyan-400 block uppercase font-bold">Interoperabilidad</span>
+                    <span className="text-xs text-white font-semibold mt-0.5 block">OJS 3.4 / DOI CrossRef</span>
+                  </div>
+                </div>
+
+                {/* Call to Action Buttons */}
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-white/10">
+                  <button
+                    onClick={onExploreCatalog}
+                    className="px-5 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-950/50 flex items-center gap-2 cursor-pointer transition-all active:scale-95 group"
+                  >
+                    <BookOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <span>Explorar Artículos de este Volumen</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Colegio de Odontólogos de La Paz</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Quick Actions Strip (Author Submission & Vancouver Guide) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
@@ -616,7 +738,7 @@ export default function CoverHero({
                     <ChevronRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
                   </h5>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Convocatoria abierta para el Vol. 12 Núm. 2. Sin costo (No APC).
+                    Convocatoria abierta para el Vol. 1 Núm. 1 (2026). Sin costo (No APC).
                   </p>
                 </div>
               </div>
@@ -643,25 +765,104 @@ export default function CoverHero({
           </div>
         </div>
 
-        {/* Impact Statistics Cards Grid with Luminous Accent */}
-        <div className="mt-12 pt-8 border-t border-white/10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {JOURNAL_IMPACT_METRICS.map((stat, i) => (
-              <div 
-                key={i} 
-                className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 hover:border-cyan-500/40 hover:shadow-[0_0_20px_rgba(6,182,212,0.15)] transition-all backdrop-blur-md"
-              >
-                <span className="font-mono text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-cyan-400 block tabular-nums">
-                  {stat.value}
+        {/* Infinite Marquee Ticker of Published Scientific Article Covers */}
+        <div className="mt-12 pt-8 border-t border-white/10" id="marquee-articles-section">
+          {/* Section Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 px-1">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+              <h4 className="text-xs sm:text-sm font-mono uppercase tracking-wider text-white font-bold flex items-center gap-2">
+                <span>Portadas Ilustrativas · Artículos Científicos</span>
+                <span className="text-[11px] text-cyan-400 font-normal hidden md:inline">
+                  (Desplazamiento Continuo)
                 </span>
-                <h5 className="font-semibold text-xs text-white mt-1">
-                  {stat.label}
-                </h5>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  {stat.subtext}
-                </p>
-              </div>
-            ))}
+              </h4>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+              <span className="hidden sm:inline">Pausa al colocar el cursor</span>
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              <span className="text-cyan-400 flex items-center gap-1 font-sans">
+                <BookOpen className="w-3.5 h-3.5 inline" /> Clic para lectura completa
+              </span>
+            </div>
+          </div>
+
+          {/* Marquee Panorámico Continuo con Máscaras de Gradiente en los Extremos */}
+          <div className="relative overflow-hidden rounded-2xl bg-slate-950/40 border border-white/5 p-2 sm:p-3">
+            {/* Edge Shadow Masks for Seamless In/Out Effect */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-slate-950 to-transparent z-10" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-slate-950 to-transparent z-10" />
+
+            {/* Marquee Track */}
+            <div className="animate-marquee flex gap-4 sm:gap-5 py-1">
+              {marqueeArticles.map((article, index) => {
+                const coverSrc = getArticleCover(article);
+                const primaryAuthor = (article.authors && article.authors.length > 0)
+                  ? article.authors[0]
+                  : 'Autor Principal COLP';
+
+                return (
+                  <div
+                    key={`${article.id}-${index}`}
+                    onClick={() => onSelectArticle && onSelectArticle(article)}
+                    className="group cursor-pointer shrink-0 w-64 sm:w-72 bg-slate-900/80 hover:bg-slate-800/90 border border-white/10 hover:border-cyan-400/60 rounded-2xl p-3 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_30px_-8px_rgba(6,182,212,0.35)] backdrop-blur-md flex flex-col text-left"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Ver artículo: ${article.title}`}
+                  >
+                    {/* Cover Thumbnail with 16/10 Editorial Aspect Ratio */}
+                    <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-slate-950 border border-white/10 shadow-inner">
+                      <img
+                        src={coverSrc}
+                        alt={`Portada: ${article.title}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                      
+                      {/* Gradient Vignette */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+
+                      {/* Floating Category Badge */}
+                      <div className="absolute top-2.5 left-2.5 z-10">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-950/85 text-cyan-300 border border-cyan-400/40 backdrop-blur-md shadow-sm">
+                          {article.category || 'Estomatología'}
+                        </span>
+                      </div>
+
+                      {/* Hover Quick Read Action Pill */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/40 backdrop-blur-[2px]">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500 text-slate-950 text-xs font-semibold shadow-lg shadow-cyan-500/30">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Leer Artículo</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Meta Info */}
+                    <div className="mt-3 flex-1 flex flex-col justify-between">
+                      {/* Truncated Title (2 Lines) */}
+                      <h5 className="font-serif text-xs sm:text-sm font-semibold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 leading-snug">
+                        {article.title}
+                      </h5>
+
+                      <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+                        <div className="flex items-center gap-1.5 truncate max-w-[170px]">
+                          <Users className="w-3 h-3 text-cyan-400/80 shrink-0" />
+                          <span className="truncate">{primaryAuthor}</span>
+                        </div>
+
+                        <span className="text-[10px] font-mono text-emerald-400 font-medium shrink-0 flex items-center gap-0.5">
+                          <span>DOI</span>
+                          <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

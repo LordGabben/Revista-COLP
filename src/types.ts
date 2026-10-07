@@ -113,6 +113,7 @@ export interface Article {
   editorNotes?: string;
   publishedInVolumeId?: string;
   publishedAt?: string;
+  cover_image_url?: string;
   pdfUrl?: string;
   doi?: string;
   references: string[];

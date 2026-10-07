@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, ShieldCheck, BookOpen, Award, Users, Scale, FileText, CheckCircle2, AlertCircle, Building2, Globe2, ExternalLink, Printer } from 'lucide-react';
 import { InstitutionalModalType, EditorialMember } from '../types';
-import { JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS, INDEXING_SYSTEMS } from '../data';
+import { JOURNAL_INFO, EDITORIAL_BOARD_MEMBERS } from '../data';
 import logoImg from '../assets/images/scientia_dentis_logo_1788278899814.jpg';
 
 interface InstitutionalModalsProps {
@@ -180,22 +180,6 @@ export default function InstitutionalModals({
                           </span>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Indexación */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
-                <h5 className="font-serif font-bold text-base text-white">
-                  Sistemas de Indexación y Visibilidad Académica
-                </h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {INDEXING_SYSTEMS.map((idx, i) => (
-                    <div key={i} className="p-3.5 bg-slate-900/60 rounded-xl border border-white/10 text-xs">
-                      <span className="font-bold text-white block">{idx.name}</span>
-                      <span className="text-cyan-400 font-mono text-[11px] font-semibold">{idx.status}</span>
-                      <p className="text-slate-400 text-[11px] mt-1">{idx.description}</p>
                     </div>
                   ))}
                 </div>
